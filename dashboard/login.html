@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BECU - Secure Login</title>
+    <title>BECU - Login</title>
     <style>
         :root {
             --becu-blue: #325482;
@@ -29,7 +29,7 @@
             position: relative;
         }
 
-        /* Background */
+        /* Background Shapes */
         .shape {
             position: absolute;
             background: var(--becu-blue);
@@ -51,22 +51,20 @@
             to { transform: translate(30px, 40px) rotate(10deg); }
         }
 
-        /* Login */
+        /* Login Card */
         .login-card {
             background: white;
             padding: 50px 45px;
             border-radius: 12px;
             box-shadow: 0 15px 35px rgba(50, 84, 130, 0.15);
-            width: 100%;
+            width: 90%;
             max-width: 440px;
             z-index: 1;
             text-align: center;
         }
 
+        /* Logo Area Updates */
         .logo-area {
-            font-size: 24px;
-            font-weight: bold;
-            color: var(--becu-blue);
             margin-bottom: 30px;
             display: flex;
             flex-direction: column;
@@ -74,14 +72,17 @@
             gap: 10px;
         }
 
-        /* Placeholder for BECU Logo Icon */
-        .logo-icon {
-            width: 60px;
-            height: 60px;
-            background: var(--becu-blue);
-            mask: url('https://www.svgrepo.com/show/513279/bank.svg') no-repeat center;
-            -webkit-mask: url('https://www.svgrepo.com/show/513279/bank.svg') no-repeat center;
-            mask-size: contain;
+        .logo-img {
+            max-width: 120px;
+            height: auto;
+            display: block;
+        }
+
+        .brand-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--becu-blue);
+            letter-spacing: 1px;
         }
 
         h2 {
@@ -118,7 +119,6 @@
             padding: 0 4px;
         }
 
-        /* floating label effect to make it look pretty */
         input:focus ~ label,
         input:not(:placeholder-shown) ~ label {
             top: -10px;
@@ -132,7 +132,6 @@
             border: 2px solid var(--becu-blue);
         }
 
-        /* BECU Style Button */
         .btn-login {
             width: 100%;
             padding: 14px;
@@ -152,7 +151,6 @@
             transform: scale(1.02);
         }
 
-        /* Footer Links */
         .links {
             margin-top: 25px;
             display: flex;
@@ -178,8 +176,8 @@
 
     <div class="login-card">
         <div class="logo-area">
-            <div class="logo-icon"></div>
-            <span>BECU</span>
+            <img src="beculogo.png" alt="BECU Logo" class="logo-img">
+            <span class="brand-name">BECU</span>
         </div>
         
         <h2>Hello!</h2>
