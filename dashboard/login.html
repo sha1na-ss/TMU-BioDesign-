@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BECU - Secure Login</title>
+    <style>
+        :root {
+            --becu-blue: #325482;
+            --becu-light-blue: #a3b8d7;
+            --background: #f1f4f8;
+            --text-dark: #333333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--background);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Background */
+        .shape {
+            position: absolute;
+            background: var(--becu-blue);
+            filter: opacity(0.15);
+            z-index: 0;
+            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+            animation: float 10s infinite alternate ease-in-out;
+        }
+
+        .shape-1 { width: 600px; height: 600px; top: -100px; left: -100px; }
+        .shape-2 { 
+            width: 400px; height: 400px; bottom: -50px; right: -50px; 
+            background: var(--becu-light-blue);
+            animation-delay: -2s;
+        }
+
+        @keyframes float {
+            from { transform: translate(0, 0) rotate(0deg); }
+            to { transform: translate(30px, 40px) rotate(10deg); }
+        }
+
+        /* Login */
+        .login-card {
+            background: white;
+            padding: 50px 45px;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(50, 84, 130, 0.15);
+            width: 100%;
+            max-width: 440px;
+            z-index: 1;
+            text-align: center;
+        }
+
+        .logo-area {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--becu-blue);
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Placeholder for BECU Logo Icon */
+        .logo-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--becu-blue);
+            mask: url('https://www.svgrepo.com/show/513279/bank.svg') no-repeat center;
+            -webkit-mask: url('https://www.svgrepo.com/show/513279/bank.svg') no-repeat center;
+            mask-size: contain;
+        }
+
+        h2 {
+            color: var(--text-dark);
+            margin-bottom: 30px;
+            font-size: 1.5rem;
+            text-align: left;
+        }
+
+        .input-container {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #d1d9e6;
+            border-radius: 6px;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.2s;
+            background: #fdfdfd;
+        }
+
+        label {
+            position: absolute;
+            left: 16px;
+            top: 14px;
+            color: #888;
+            pointer-events: none;
+            transition: all 0.2s ease;
+            background: white;
+            padding: 0 4px;
+        }
+
+        /* floating label effect to make it look pretty */
+        input:focus ~ label,
+        input:not(:placeholder-shown) ~ label {
+            top: -10px;
+            left: 12px;
+            font-size: 0.8rem;
+            color: var(--becu-blue);
+            font-weight: 600;
+        }
+
+        input:focus {
+            border: 2px solid var(--becu-blue);
+        }
+
+        /* BECU Style Button */
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--becu-blue);
+            color: white;
+            border: none;
+            border-radius: 30px; 
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-login:hover {
+            background-color: #243d5f;
+            transform: scale(1.02);
+        }
+
+        /* Footer Links */
+        .links {
+            margin-top: 25px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+        }
+
+        .links a {
+            color: var(--becu-blue);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+
+    <div class="login-card">
+        <div class="logo-area">
+            <div class="logo-icon"></div>
+            <span>BECU</span>
+        </div>
+        
+        <h2>Hello!</h2>
+
+        <form id="loginForm" onsubmit="return handleLogin(event)">
+            <div class="input-container">
+                <input type="text" id="username" placeholder=" " required>
+                <label>Username</label>
+            </div>
+
+            <div class="input-container">
+                <input type="password" id="password" placeholder=" " required>
+                <label>Password</label>
+            </div>
+
+            <button type="submit" class="btn-login">Sign In</button>
+        </form>
+
+        <div class="links">
+            <a href="#">Forgot Username?</a>
+            <a href="#">Forgot Password?</a>
+        </div>
+    </div>
+
+    <script>
+        function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.querySelector('.btn-login');
+            btn.innerText = "Connecting...";
+            btn.style.opacity = "0.7";
+            
+            setTimeout(() => {
+                alert("Login successful! Redirecting to dashboard...");
+                window.location.reload();
+            }, 1500);
+        }
+    </script>
+</body>
+</html>
