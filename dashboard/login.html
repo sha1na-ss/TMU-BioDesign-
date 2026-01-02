@@ -204,15 +204,15 @@
 
     <script>
         function handleLogin(e) {
-            e.preventDefault();
-            const btn = document.querySelector('.btn-login');
-            btn.innerText = "Connecting...";
-            btn.style.opacity = "0.7";
-            
-            setTimeout(() => {
-                alert("Login successful! Redirecting to dashboard...");
-                window.location.reload();
-            }, 1500);
+    e.preventDefault();
+    const btn = document.querySelector('.btn-login');
+    btn.innerText = "Connecting...";
+    btn.style.opacity = "0.7";
+
+    setTimeout(() => {
+        alert("Login successful! Redirecting to dashboard...");
+        window.location.href = "index.html"; // <-- redirect here
+    }, 1500);
         }
     </script>
 </body>
