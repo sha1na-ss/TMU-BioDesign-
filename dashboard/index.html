@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ACL Rehab Dashboard</title>
+
+  <style>
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #f5f7fa;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: auto;
+      padding: 30px;
+    }
+
+    h2, h3, h4 {
+      margin-bottom: 10px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* Cards */
+    .card {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+
+    /* Buttons */
+    button {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 5px;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button.secondary {
+      background: #6b7280;
+    }
+
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    /* Layout */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .exercise-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 15px;
+    }
+
+    .metric {
+      font-size: 14px;
+      margin: 6px 0;
+    }
+
+    .label {
+      color: #6b7280;
+    }
+
+    .value {
+      font-weight: 600;
+    }
+
+    .progress {
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 6px;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: #22c55e;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- LOGIN SCREEN -->
+  <div id="login" class="container">
+    <h2>Therapist Login</h2>
+    <button onclick="login()">Login</button>
+  </div>
+
+  <!-- PATIENT LIST -->
+  <div id="patients" class="container hidden">
+    <h2>Patients</h2>
+    <div id="patientList"></div>
+  </div>
+
+  <!-- PATIENT DETAIL -->
+  <div id="patientDetail" class="container hidden">
+    <div class="top-bar">
+      <button class="secondary" onclick="goBack()">← Back to Patients</button>
+      <button onclick="advanceLevel()">Advance Level</button>
+    </div>
+
+    <h2 id="patientName"></h2>
+    <p id="patientLevel"></p>
+
+    <h3>Exercises</h3>
+    <div id="exerciseList" class="exercise-grid"></div>
+  </div>
+
+  <script>
+    // -------------------------
+    // MOCK DATA
+    // -------------------------
+    const patients = [
+      {
+        id: 1,
+        name: "Patient A",
+        level: 1,
+        exercises: [
+          {
+            name: "Squat",
+            success: 87,
+            kneeROM: 65,
+            emgSymmetry: 0.92,
+            sessions: 5
+          }
+        ]
+      },
+      {
+        id: 2,
+        name: "Patient B",
+        level: 2,
+        exercises: [
+          {
+            name: "Lunge",
+            success: 92,
+            kneeROM: 72,
+            emgSymmetry: 0.95,
+            sessions: 8
+          }
+        ]
+      }
+    ];
+
+    let selectedPatient = null;
+
+    // -------------------------
+    // LOGIN
+    // -------------------------
+    function login() {
+      document.getElementById("login").classList.add("hidden");
+      document.getElementById("patients").classList.remove("hidden");
+      loadPatients();
+    }
+
+    // -------------------------
+    // LOAD PATIENTS
+    // -------------------------
+    function loadPatients() {
+      const list = document.getElementById("patientList");
+      list.innerHTML = "";
+
+      patients.forEach(p => {
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+          <h3>${p.name}</h3>
+          <p class="metric">
+            <span class="label">Current Level:</span>
+            <span class="value">${p.level}</span>
+          </p>
+          <button onclick="openPatient(${p.id})">View Progress</button>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    // -------------------------
+    // PATIENT DETAIL
+    // -------------------------
+    function openPatient(id) {
+      selectedPatient = patients.find(p => p.id === id);
+
+      document.getElementById("patients").classList.add("hidden");
+      document.getElementById("patientDetail").classList.remove("hidden");
+
+      document.getElementById("patientName").innerText =
+        `${selectedPatient.name} — Level ${selectedPatient.level}`;
+
+      document.getElementById("patientLevel").innerText =
+        "Rehabilitation Phase " + selectedPatient.level;
+
+      const exList = document.getElementById("exerciseList");
+      exList.innerHTML = "";
+
+      selectedPatient.exercises.forEach(ex => {
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+          <h4>${ex.name}</h4>
+
+          <p class="metric">
+            <span class="label">Success Rate:</span>
+            <span class="value">${ex.success}%</span>
+          </p>
+          <div class="progress">
+            <div class="progress-bar" style="width:${ex.success}%"></div>
+          </div>
+
+          <p class="metric">
+            <span class="label">Knee ROM:</span>
+            <span class="value">${ex.kneeROM}°</span>
+          </p>
+
+          <p class="metric">
+            <span class="label">EMG Symmetry:</span>
+            <span class="value">${ex.emgSymmetry}</span>
+          </p>
+
+          <p class="metric">
+            <span class="label">Sessions:</span>
+            <span class="value">${ex.sessions}</span>
+          </p>
+        `;
+        exList.appendChild(div);
+      });
+    }
+
+    // -------------------------
+    // NAVIGATION
+    // -------------------------
+    function goBack() {
+      document.getElementById("patientDetail").classList.add("hidden");
+      document.getElementById("patients").classList.remove("hidden");
+      loadPatients();
+    }
+
+    // -------------------------
+    // LEVEL PROGRESSION
+    // -------------------------
+    function advanceLevel() {
+      if (selectedPatient.level < 3) {
+        selectedPatient.level++;
+        openPatient(selectedPatient.id);
+        alert("Patient advanced to Level " + selectedPatient.level);
+      } else {
+        alert("Max level reached");
+      }
+    }
+  </script>
+
+</body>
+</html>
