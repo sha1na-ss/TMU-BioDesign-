@@ -3,262 +3,917 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ACL Rehab Dashboard</title>
+  <title>ACL Rehab Dashboard - Therapist Portal</title>
 
   <style>
-    body {
-      font-family: "Segoe UI", Arial, sans-serif;
-      background: #f5f7fa;
-      margin: 0;
-      padding: 0;
+    :root{
+      --primary-blue:#2563eb;
+      --primary-blue-700:#1d4ed8;
+      --secondary-gray:#6b7280;
+      --success-green:#22c55e;
+      --warning-orange:#f59e0b;
+      --error-red:#ef4444;
+
+      --background-light:#f5f7fa;
+      --card-white:#ffffff;
+      --text-dark:#111827;
+      --text-light:#6b7280;
+      --border-color:#e5e7eb;
+
+      --shadow-sm:0 2px 8px rgba(0,0,0,.06);
+      --shadow-md:0 8px 24px rgba(0,0,0,.10);
+
+      --radius:12px;
+      --radius-sm:10px;
+      --focus:0 0 0 4px rgba(37,99,235,.18);
     }
 
-    .container {
-      max-width: 1100px;
-      margin: auto;
-      padding: 30px;
+    *{margin:0;padding:0;box-sizing:border-box}
+
+    body{
+      font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Arial,sans-serif;
+      background:var(--background-light);
+      color:var(--text-dark);
+      line-height:1.6;
+      min-height:100vh;
     }
 
-    h2, h3, h4 {
-      margin-bottom: 10px;
+    .container{max-width:1200px;margin:0 auto;padding:28px}
+
+    /* Header */
+    .top-bar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:22px;
+      flex-wrap:wrap;
+      gap:14px;
     }
 
-    .hidden {
-      display: none;
+    .header-title{display:flex;align-items:center;gap:12px}
+    .header-title h1{font-size:1.8rem;letter-spacing:-.01em}
+
+    .clinic-badge{
+      background:var(--primary-blue);
+      color:#fff;
+      padding:4px 12px;
+      border-radius:999px;
+      font-size:.8rem;
+      font-weight:600;
+      white-space:nowrap;
     }
 
-    /* Cards */
-    .card {
-      background: #ffffff;
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 15px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    .user-info{display:flex;align-items:center;gap:14px}
+    .user-avatar{
+      width:40px;height:40px;border-radius:50%;
+      background:var(--primary-blue);color:#fff;
+      display:flex;align-items:center;justify-content:center;
+      font-weight:800;font-size:1.05rem;
     }
 
     /* Buttons */
-    button {
-      padding: 8px 14px;
-      border: none;
-      border-radius: 5px;
-      background: #2563eb;
-      color: white;
-      cursor: pointer;
-      font-size: 14px;
+    button{
+      padding:10px 16px;
+      border:1px solid transparent;
+      border-radius:10px;
+      background:var(--primary-blue);
+      color:#fff;
+      cursor:pointer;
+      font-size:14px;
+      font-weight:700;
+      transition:transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
+    }
+    button:hover:not(:disabled){
+      background:var(--primary-blue-700);
+      transform:translateY(-1px);
+      box-shadow:0 10px 18px rgba(37,99,235,.18);
+    }
+    button:active:not(:disabled){transform:translateY(0)}
+    button.secondary{background:var(--secondary-gray)}
+    button.secondary:hover:not(:disabled){background:#4b5563;box-shadow:0 10px 18px rgba(107,114,128,.18)}
+    button.warning{background:var(--warning-orange)}
+    button.warning:hover:not(:disabled){background:#d97706;box-shadow:0 10px 18px rgba(245,158,11,.18)}
+    button.ghost{
+      background:transparent;
+      border-color:var(--border-color);
+      color:var(--text-dark);
+    }
+    button.ghost:hover:not(:disabled){
+      background:#fff;
+      border-color:#d1d5db;
+      box-shadow:var(--shadow-sm);
+      transform:translateY(-1px);
+    }
+    button:disabled{
+      background:#9ca3af;
+      cursor:not-allowed;
+      transform:none !important;
+      box-shadow:none !important;
+    }
+    button.icon-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 14px}
+
+    /* Inputs */
+    input, select, textarea{
+      outline:none;
+      border:1px solid var(--border-color);
+      border-radius:10px;
+      font:inherit;
+      background:#fff;
+      transition:box-shadow .15s ease, border-color .15s ease;
+    }
+    input:focus, select:focus, textarea:focus{
+      border-color:rgba(37,99,235,.6);
+      box-shadow:var(--focus);
     }
 
-    button.secondary {
-      background: #6b7280;
+    /* Cards */
+    .card{
+      background:var(--card-white);
+      border-radius:var(--radius);
+      padding:18px;
+      margin-bottom:18px;
+      box-shadow:var(--shadow-sm);
+      border:1px solid var(--border-color);
+      transition:transform .18s ease, box-shadow .18s ease;
+    }
+    .card:hover{
+      transform:translateY(-2px);
+      box-shadow:var(--shadow-md);
     }
 
-    button:disabled {
-      background: #9ca3af;
-      cursor: not-allowed;
+    /* Patient cards */
+    .patient-card{cursor:pointer}
+    .patient-card h3{
+      margin-bottom:10px;color:var(--primary-blue);
+      display:flex;justify-content:space-between;align-items:center;gap:10px;
+    }
+    .patient-id{
+      font-size:.85rem;color:var(--text-light);font-weight:600;
+      background:var(--background-light);
+      padding:2px 10px;border-radius:999px;white-space:nowrap;
     }
 
-    /* Layout */
-    .top-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
+    /* Metrics */
+    .metric{
+      display:flex;justify-content:space-between;align-items:center;
+      margin:8px 0;font-size:14px;gap:10px;
+    }
+    .label{color:var(--text-light)}
+    .value{font-weight:800;color:var(--text-dark)}
+    .value.good{color:var(--success-green)}
+    .value.fair{color:var(--warning-orange)}
+    .value.poor{color:var(--error-red)}
+
+    /* Progress */
+    .progress-container{margin:14px 0}
+    .progress-label{display:flex;justify-content:space-between;margin-bottom:6px;font-size:.92rem}
+    .progress{height:10px;background:var(--border-color);border-radius:999px;overflow:hidden}
+    .progress-bar{height:100%;background:var(--success-green);border-radius:999px;transition:width .5s ease}
+    .progress-bar.fair{background:var(--warning-orange)}
+    .progress-bar.poor{background:var(--error-red)}
+
+    /* Level indicator */
+    .level-indicator{display:inline-flex;align-items:center;gap:10px;margin:14px 0}
+    .level-dot{width:12px;height:12px;border-radius:50%;background:#d1d5db}
+    .level-dot.active{background:var(--primary-blue);transform:scale(1.15)}
+
+    /* Grid */
+    .exercise-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+      gap:18px;
+      margin-top:16px;
     }
 
-    .exercise-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 15px;
+    .exercise-header{
+      display:flex;justify-content:space-between;align-items:center;
+      margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border-color);gap:10px;
+    }
+    .exercise-name{font-size:1.15rem;font-weight:900}
+    .session-count{
+      background:var(--primary-blue);
+      color:#fff;padding:4px 10px;border-radius:999px;font-size:.85rem;font-weight:700;white-space:nowrap;
     }
 
-    .metric {
-      font-size: 14px;
-      margin: 6px 0;
+    /* Status pills */
+    .status-indicator{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:4px 10px;border-radius:999px;
+      font-size:.85rem;font-weight:800;text-transform:capitalize;
+    }
+    .status-active{background:#dcfce7;color:#166534}
+    .status-pending{background:#fef3c7;color:#92400e}
+    .status-completed{background:#dbeafe;color:#1e40af}
+
+    /* Filters */
+    .filters{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+    .search-box{flex:1;min-width:250px;position:relative}
+    .search-box input{width:100%;padding:10px 15px 10px 40px;font-size:14px}
+    .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-light)}
+    .filter-select{padding:10px 14px;font-size:14px;min-width:160px}
+
+    /* Stats summary */
+    .stats-summary{
+      display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+      gap:16px;margin-bottom:22px;
+    }
+    .stat-card{text-align:center;padding:22px 18px}
+    .stat-value{
+      font-size:2.2rem;font-weight:950;color:var(--primary-blue);
+      margin:10px 0;letter-spacing:-.02em;
+    }
+    .stat-label{color:var(--text-light);font-size:.9rem;font-weight:700}
+
+    /* Toast */
+    .toast{
+      position:fixed;bottom:20px;right:20px;
+      background:var(--text-dark);color:#fff;
+      padding:14px 16px;border-radius:12px;
+      box-shadow:0 10px 22px rgba(0,0,0,.18);
+      z-index:1000;
+      animation:slideIn .25s ease;
+      display:flex;align-items:center;gap:10px;
+      max-width:min(360px, calc(100vw - 40px));
+    }
+    @keyframes slideIn{
+      from{transform:translateX(20px);opacity:0}
+      to{transform:translateX(0);opacity:1}
     }
 
-    .label {
-      color: #6b7280;
+    .hidden{display:none !important}
+
+    /* Accessible reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      *{transition:none !important;animation:none !important;scroll-behavior:auto !important}
     }
 
-    .value {
-      font-weight: 600;
+    /* Responsive */
+    @media (max-width: 768px){
+      .container{padding:18px}
+      .top-bar{flex-direction:column;align-items:flex-start}
+      .exercise-grid{grid-template-columns:1fr}
+      .stats-summary{grid-template-columns:1fr}
+      .filters{flex-direction:column}
+      .search-box{min-width:100%}
     }
-
-    .progress {
-      height: 8px;
-      background: #e5e7eb;
-      border-radius: 4px;
-      overflow: hidden;
-      margin-top: 6px;
-      margin-bottom: 8px;
-    }
-
-    .progress-bar {
-      height: 100%;
-      background: #22c55e;
+    @media (max-width: 480px){
+      .container{padding:14px}
+      button{width:100%}
+      .user-info{flex-direction:column;align-items:flex-start}
     }
   </style>
 </head>
 
 <body>
-
-  <!-- LOGIN SCREEN -->
-  <div id="login" class="container">
-    <h2>Therapist Login</h2>
-    <button onclick="login()">Login</button>
-  </div>
-
   <!-- PATIENT LIST -->
-  <div id="patients" class="container hidden">
-    <h2>Patients</h2>
-    <div id="patientList"></div>
+  <div id="patients" class="container">
+    <div class="top-bar">
+      <div class="header-title">
+        <h1>Patient Management</h1>
+        <span class="clinic-badge">Sports Medicine Clinic</span>
+      </div>
+      <div class="user-info">
+        <div class="user-avatar" id="userInitial" aria-hidden="true">T</div>
+        <div>
+          <div style="font-weight: 800;">Dr. Therapist</div>
+          <div style="font-size: 0.85rem; color: var(--text-light); font-weight: 700;">Physiotherapist</div>
+        </div>
+        <button onclick="logout()" class="secondary">Logout</button>
+      </div>
+    </div>
+
+    <div class="stats-summary" aria-label="Summary statistics">
+      <div class="stat-card card">
+        <div class="stat-label">Total Patients</div>
+        <div class="stat-value" id="totalPatients">0</div>
+      </div>
+      <div class="stat-card card">
+        <div class="stat-label">Active Sessions</div>
+        <div class="stat-value" id="activeSessions">0</div>
+      </div>
+      <div class="stat-card card">
+        <div class="stat-label">Avg. Progress</div>
+        <div class="stat-value" id="avgProgress">0%</div>
+      </div>
+      <div class="stat-card card">
+        <div class="stat-label">This Week</div>
+        <div class="stat-value" id="weekSessions">0</div>
+      </div>
+    </div>
+
+    <div class="filters" role="region" aria-label="Filters">
+      <div class="search-box">
+        <span class="search-icon" aria-hidden="true">🔍</span>
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Search patients by name or ID..."
+          oninput="filterPatients()"
+          autocomplete="off"
+        />
+      </div>
+      <select class="filter-select" id="levelFilter" onchange="filterPatients()" aria-label="Filter by level">
+        <option value="">All Levels</option>
+        <option value="1">Level 1</option>
+        <option value="2">Level 2</option>
+        <option value="3">Level 3</option>
+      </select>
+      <select class="filter-select" id="statusFilter" onchange="filterPatients()" aria-label="Filter by status">
+        <option value="">All Status</option>
+        <option value="active">Active</option>
+        <option value="pending">Pending</option>
+        <option value="completed">Completed</option>
+      </select>
+      <button class="ghost" onclick="resetFilters()">Reset</button>
+    </div>
+
+    <h2 style="margin: 8px 0 6px;">Patients</h2>
+    <p style="color: var(--text-light); margin-bottom: 10px; font-weight: 650;">
+      Click a patient to view detailed progress and exercises.
+    </p>
+
+    <div id="patientList" class="exercise-grid" role="list"></div>
+
+    <div style="text-align:center;margin-top:34px;padding-top:18px;border-top:1px solid var(--border-color);">
+      <p style="color:var(--text-light);font-size:.9rem;">
+        <strong>Note:</strong> Data is stored locally in your browser. Clearing browser data will reset patient information.
+      </p>
+    </div>
   </div>
 
   <!-- PATIENT DETAIL -->
   <div id="patientDetail" class="container hidden">
     <div class="top-bar">
-      <button class="secondary" onclick="goBack()">← Back to Patients</button>
-      <button onclick="advanceLevel()">Advance Level</button>
+      <button class="secondary icon-btn" onclick="goBack()" aria-label="Back to patient list">
+        ← Back to Patients
+      </button>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="warning" onclick="resetProgress()" id="resetBtn" disabled>Reset Progress</button>
+        <button onclick="advanceLevel()" id="advanceBtn">Advance</button>
+      </div>
     </div>
 
-    <h2 id="patientName"></h2>
-    <p id="patientLevel"></p>
+    <div class="card" style="margin-bottom: 20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom: 12px;">
+        <div>
+          <h1 id="patientName" style="margin-bottom: 6px; letter-spacing: -.01em;"></h1>
+          <p id="patientLevel" style="color: var(--text-light); font-weight: 650;"></p>
+        </div>
 
-    <h3>Exercises</h3>
+        <div class="level-indicator" aria-label="Current rehab phase">
+          <span class="level-dot active" aria-hidden="true"></span>
+          <span class="level-dot" aria-hidden="true"></span>
+          <span class="level-dot" aria-hidden="true"></span>
+          <span style="margin-left: 10px; font-weight: 900;">
+            Phase <span id="currentLevel">1</span>/3
+          </span>
+        </div>
+      </div>
+
+      <div class="progress-container" aria-label="Overall progress">
+        <div class="progress-label">
+          <span style="font-weight: 800;">Overall Progress</span>
+          <span id="overallProgress" style="font-weight: 900;">0%</span>
+        </div>
+        <div class="progress" aria-hidden="true">
+          <div class="progress-bar" id="overallProgressBar" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin-bottom: 8px;">Exercises</h3>
     <div id="exerciseList" class="exercise-grid"></div>
+
+    <div class="card" style="margin-top: 22px;">
+      <h4 style="margin-bottom: 10px;">Progress Notes</h4>
+      <textarea
+        id="progressNotes"
+        style="width:100%; min-height:110px; padding:12px;"
+        placeholder="Add clinical notes here..."
+      ></textarea>
+
+      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+        <button onclick="saveNotes()">Save Notes</button>
+        <button class="ghost" onclick="clearNotes()">Clear Notes</button>
+      </div>
+
+      <div id="notesSaved" style="display:none; margin-top:10px; color: var(--success-green); font-size: 0.9rem; font-weight: 800;">
+        ✓ Notes saved
+      </div>
+    </div>
   </div>
 
+  <!-- Toast -->
+  <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
   <script>
-    // -------------------------
-    // MOCK DATA
-    // -------------------------
-    const patients = [
+    
+    // DATA MANAGEMENT
+    
+    const STORAGE_KEY = 'aclRehabPatients';
+    const NOTES_KEY = 'aclRehabNotes';
+
+    // Default patient data
+    let patients = [
       {
         id: 1,
-        name: "Patient A",
+        name: "Patient 1",
+        age: 28,
         level: 1,
+        status: "active",
+        injuryDate: "2024-01-15",
+        lastSession: "2024-03-10",
+        overallProgress: 65,
         exercises: [
-          {
-            name: "Squat",
-            success: 87,
-            kneeROM: 65,
-            emgSymmetry: 0.92,
-            sessions: 5
-          }
+          { id: 101, name: "Wall Squats", success: 75, kneeROM: 65, emgSymmetry: 0.82, sessions: 5, target: 85, description: "Gradual weight-bearing squats" },
+          { id: 102, name: "Straight Leg Raises", success: 88, kneeROM: 70, emgSymmetry: 0.91, sessions: 7, target: 90, description: "Quadriceps activation" },
+          { id: 103, name: "Heel Slides", success: 92, kneeROM: 85, emgSymmetry: 0.89, sessions: 6, target: 95, description: "Range of motion improvement" }
         ]
       },
       {
         id: 2,
-        name: "Patient B",
+        name: "Patient 2",
+        age: 32,
         level: 2,
+        status: "active",
+        injuryDate: "2023-12-10",
+        lastSession: "2024-03-12",
+        overallProgress: 82,
         exercises: [
-          {
-            name: "Lunge",
-            success: 92,
-            kneeROM: 72,
-            emgSymmetry: 0.95,
-            sessions: 8
-          }
+          { id: 201, name: "Forward Lunges", success: 85, kneeROM: 72, emgSymmetry: 0.88, sessions: 8, target: 90, description: "Dynamic stability training" },
+          { id: 202, name: "Step-ups", success: 78, kneeROM: 68, emgSymmetry: 0.85, sessions: 6, target: 85, description: "Progressive height steps" }
+        ]
+      },
+      {
+        id: 3,
+        name: "Patient 3",
+        age: 45,
+        level: 3,
+        status: "pending",
+        injuryDate: "2023-11-05",
+        lastSession: "2024-03-08",
+        overallProgress: 91,
+        exercises: [
+          { id: 301, name: "Single Leg Squats", success: 82, kneeROM: 78, emgSymmetry: 0.92, sessions: 10, target: 95, description: "Advanced stability challenge" },
+          { id: 302, name: "Box Jumps", success: 76, kneeROM: 75, emgSymmetry: 0.87, sessions: 4, target: 90, description: "Plyometric training" }
         ]
       }
     ];
 
     let selectedPatient = null;
 
-    // -------------------------
-    // LOGIN
-    // -------------------------
-    function login() {
-      document.getElementById("login").classList.add("hidden");
-      document.getElementById("patients").classList.remove("hidden");
+    // INITIALIZATION
+    function init(){
+      loadFromStorage();
+      updateStats();
       loadPatients();
+      setUserInitial();
+      showToast('Welcome to ACL Rehab Dashboard!', 'success');
     }
 
-    // -------------------------
-    // LOAD PATIENTS
-    // -------------------------
-    function loadPatients() {
+    function setUserInitial(){
+      const el = document.getElementById('userInitial');
+      const name = 'Dr. Therapist';
+      el.textContent = (name.trim()[0] || 'T').toUpperCase();
+    }
+
+    function loadFromStorage(){
+      try{
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if(saved){
+          const parsed = JSON.parse(saved);
+          if(Array.isArray(parsed) && parsed.length){
+            patients = parsed;
+          }
+        }
+      }catch(e){
+        console.error('Failed to load from storage:', e);
+        showToast('Error loading patient data', 'error');
+      }
+    }
+
+    function saveToStorage(){
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(patients));
+      }catch(e){
+        console.error('Failed to save to storage:', e);
+        showToast('Error saving data', 'error');
+      }
+    }
+
+    // LOGIN / LOGOUT
+    function logout(){
+      if(confirm('Are you sure you want to logout?')){
+        localStorage.removeItem('lastLogin');
+        window.location.href = "login.html";
+      }
+    }
+
+    // PATIENT LIST
+    function loadPatients(filteredPatients = patients){
       const list = document.getElementById("patientList");
       list.innerHTML = "";
 
-      patients.forEach(p => {
+      if(filteredPatients.length === 0){
+        list.innerHTML = `
+          <div class="card" style="grid-column: 1 / -1; text-align:center; padding:36px;">
+            <div style="font-size: 3rem; margin-bottom: 14px;">🔍</div>
+            <h3 style="margin-bottom:6px;">No patients found</h3>
+            <p style="color: var(--text-light); margin: 0 0 18px; font-weight:650;">Try adjusting your search filters.</p>
+            <button onclick="resetFilters()">Reset Filters</button>
+          </div>
+        `;
+        return;
+      }
+
+      // Sort: active first, then higher progress
+      const sorted = [...filteredPatients].sort((a,b) => {
+        const sa = a.status === 'active' ? 0 : a.status === 'pending' ? 1 : 2;
+        const sb = b.status === 'active' ? 0 : b.status === 'pending' ? 1 : 2;
+        if(sa !== sb) return sa - sb;
+        return (b.overallProgress ?? 0) - (a.overallProgress ?? 0);
+      });
+
+      sorted.forEach(p => {
+        const statusClass = `status-${p.status}`;
+        const progressClass =
+          p.overallProgress >= 80 ? 'good' :
+          p.overallProgress >= 60 ? 'fair' : 'poor';
+
         const div = document.createElement("div");
-        div.className = "card";
+        div.className = "card patient-card";
+        div.setAttribute('role','listitem');
+        div.tabIndex = 0;
+        div.addEventListener('click', () => openPatient(p.id));
+        div.addEventListener('keydown', (e) => {
+          if(e.key === 'Enter' || e.key === ' ') openPatient(p.id);
+        });
+
         div.innerHTML = `
-          <h3>${p.name}</h3>
-          <p class="metric">
-            <span class="label">Current Level:</span>
+          <div style="display:flex; justify-content:space-between; align-items:start; gap:10px; margin-bottom: 12px;">
+            <h3>${escapeHTML(p.name)} <span class="patient-id">#${p.id}</span></h3>
+            <span class="status-indicator ${statusClass}">${escapeHTML(p.status)}</span>
+          </div>
+
+          <div class="metric">
+            <span class="label">Age:</span>
+            <span class="value">${p.age}</span>
+          </div>
+
+          <div class="metric">
+            <span class="label">Level:</span>
             <span class="value">${p.level}</span>
-          </p>
-          <button onclick="openPatient(${p.id})">View Progress</button>
+          </div>
+
+          <div class="progress-container">
+            <div class="progress-label">
+              <span class="label">Progress</span>
+              <span class="value ${progressClass}">${p.overallProgress}%</span>
+            </div>
+            <div class="progress" aria-hidden="true">
+              <div class="progress-bar ${progressClass}" style="width:${p.overallProgress}%"></div>
+            </div>
+          </div>
+
+          <div class="metric">
+            <span class="label">Last Session:</span>
+            <span class="value">${formatDate(p.lastSession)}</span>
+          </div>
+
+          <button onclick="event.stopPropagation(); openPatient(${p.id})" style="margin-top: 14px; width:100%;">
+            View Progress
+          </button>
         `;
         list.appendChild(div);
       });
     }
 
-    // -------------------------
+    function filterPatients(){
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+      const levelFilter = document.getElementById('levelFilter').value;
+      const statusFilter = document.getElementById('statusFilter').value;
+
+      const filtered = patients.filter(p => {
+        const matchesSearch =
+          p.name.toLowerCase().includes(searchTerm) ||
+          p.id.toString().includes(searchTerm);
+
+        const matchesLevel = !levelFilter || String(p.level) === levelFilter;
+        const matchesStatus = !statusFilter || p.status === statusFilter;
+
+        return matchesSearch && matchesLevel && matchesStatus;
+      });
+
+      loadPatients(filtered);
+      updateStats(filtered);
+    }
+
+    function resetFilters(){
+      document.getElementById('searchInput').value = '';
+      document.getElementById('levelFilter').value = '';
+      document.getElementById('statusFilter').value = '';
+      loadPatients(patients);
+      updateStats();
+    }
+
     // PATIENT DETAIL
-    // -------------------------
-    function openPatient(id) {
+    function openPatient(id){
       selectedPatient = patients.find(p => p.id === id);
+      if(!selectedPatient) return;
 
       document.getElementById("patients").classList.add("hidden");
       document.getElementById("patientDetail").classList.remove("hidden");
 
-      document.getElementById("patientName").innerText =
-        `${selectedPatient.name} — Level ${selectedPatient.level}`;
-
+      document.getElementById("patientName").innerText = selectedPatient.name;
       document.getElementById("patientLevel").innerText =
-        "Rehabilitation Phase " + selectedPatient.level;
+        `Age ${selectedPatient.age} • Injury: ${formatDate(selectedPatient.injuryDate)} • Level ${selectedPatient.level}`;
 
+      document.getElementById("currentLevel").innerText = selectedPatient.level;
+
+      // progress visuals
+      setOverallProgress(selectedPatient.overallProgress);
+
+      updateLevelIndicator();
+
+      const advanceBtn = document.getElementById('advanceBtn');
+      advanceBtn.innerText =
+        selectedPatient.level < 3 ? `Advance to Level ${selectedPatient.level + 1}` : 'Max Level Reached';
+      advanceBtn.disabled = selectedPatient.level >= 3;
+
+      const resetBtn = document.getElementById('resetBtn');
+      resetBtn.disabled = selectedPatient.level <= 1;
+
+      // Exercises
       const exList = document.getElementById("exerciseList");
       exList.innerHTML = "";
 
       selectedPatient.exercises.forEach(ex => {
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `
-          <h4>${ex.name}</h4>
+        const successClass =
+          ex.success >= ex.target ? 'good' :
+          ex.success >= ex.target - 15 ? 'fair' : 'poor';
 
-          <p class="metric">
-            <span class="label">Success Rate:</span>
-            <span class="value">${ex.success}%</span>
-          </p>
-          <div class="progress">
-            <div class="progress-bar" style="width:${ex.success}%"></div>
+        const emgClass =
+          ex.emgSymmetry >= 0.9 ? 'good' :
+          ex.emgSymmetry >= 0.8 ? 'fair' : 'poor';
+
+        const div = document.createElement("div");
+        div.className = "card exercise-card";
+        div.innerHTML = `
+          <div class="exercise-header">
+            <div class="exercise-name">${escapeHTML(ex.name)}</div>
+            <div class="session-count">${ex.sessions} sessions</div>
           </div>
 
-          <p class="metric">
+          <p style="color: var(--text-light); margin-bottom: 12px; font-size: .92rem; font-weight:650;">
+            ${escapeHTML(ex.description || '')}
+          </p>
+
+          <div class="progress-container">
+            <div class="progress-label">
+              <span class="label">Success Rate</span>
+              <span class="value ${successClass}">${ex.success}% / ${ex.target}%</span>
+            </div>
+            <div class="progress" aria-hidden="true">
+              <div class="progress-bar ${successClass}" style="width:${Math.min(ex.success, 100)}%"></div>
+            </div>
+          </div>
+
+          <div class="metric">
             <span class="label">Knee ROM:</span>
             <span class="value">${ex.kneeROM}°</span>
-          </p>
+          </div>
 
-          <p class="metric">
+          <div class="metric">
             <span class="label">EMG Symmetry:</span>
-            <span class="value">${ex.emgSymmetry}</span>
-          </p>
+            <span class="value ${emgClass}">${Number(ex.emgSymmetry).toFixed(2)}</span>
+          </div>
 
-          <p class="metric">
-            <span class="label">Sessions:</span>
-            <span class="value">${ex.sessions}</span>
-          </p>
+          <div style="margin-top: 14px; display:flex; gap:10px;">
+            <button onclick="updateExercise(${ex.id}, 'increase')" style="flex:1;">+ Improve</button>
+            <button onclick="updateExercise(${ex.id}, 'decrease')" class="secondary" style="flex:1;">- Needs Work</button>
+          </div>
         `;
         exList.appendChild(div);
       });
+
+      loadNotes();
+    }
+
+    function setOverallProgress(value){
+      const clamped = Math.max(0, Math.min(100, Number(value) || 0));
+      document.getElementById("overallProgress").innerText = clamped + '%';
+      document.getElementById("overallProgressBar").style.width = clamped + '%';
+
+      // color overall bar based on threshold
+      const bar = document.getElementById("overallProgressBar");
+      bar.classList.remove('good','fair','poor');
+      bar.classList.add(clamped >= 80 ? 'good' : clamped >= 60 ? 'fair' : 'poor');
+    }
+
+    function updateLevelIndicator(){
+      const dots = document.querySelectorAll('.level-dot');
+      dots.forEach((dot, index) => {
+        dot.classList.toggle('active', index < selectedPatient.level);
+      });
+    }
+
+    function updateExercise(exerciseId, action){
+      const patient = patients.find(p => p.id === selectedPatient.id);
+      if(!patient) return;
+
+      const exercise = patient.exercises.find(ex => ex.id === exerciseId);
+      if(!exercise) return;
+
+      const change = action === 'increase' ? 5 : -5;
+      exercise.success = clamp(exercise.success + change, 0, 100);
+
+      if(action === 'increase') exercise.sessions += 1;
+
+      // Recalculate overall progress (avg success)
+      const totalSuccess = patient.exercises.reduce((sum, ex) => sum + (Number(ex.success) || 0), 0);
+      patient.overallProgress = Math.round(totalSuccess / patient.exercises.length);
+
+      saveToStorage();
+      openPatient(selectedPatient.id);
+      showToast(`${action === 'increase' ? 'Improved' : 'Adjusted'} ${exercise.name}`, 'info');
+    }
+
+    function advanceLevel(){
+      if(selectedPatient.level >= 3) return;
+
+      selectedPatient.level++;
+
+      // Add new exercises when leveling up
+      if(selectedPatient.level === 2){
+        selectedPatient.exercises.push({
+          id: Date.now(),
+          name: "Lateral Step-ups",
+          success: 65,
+          kneeROM: 68,
+          emgSymmetry: 0.78,
+          sessions: 2,
+          target: 85,
+          description: "Sideways stability training"
+        });
+      }else if(selectedPatient.level === 3){
+        selectedPatient.exercises.push({
+          id: Date.now(),
+          name: "Depth Jumps",
+          success: 60,
+          kneeROM: 72,
+          emgSymmetry: 0.82,
+          sessions: 1,
+          target: 90,
+          description: "Advanced plyometrics"
+        });
+      }
+
+      saveToStorage();
+      openPatient(selectedPatient.id);
+      showToast(`${selectedPatient.name} advanced to Level ${selectedPatient.level}`, 'success');
+    }
+
+    function resetProgress(){
+      if(!confirm('Reset patient to Level 1? This will clear progress data.')) return;
+
+      selectedPatient.level = 1;
+      selectedPatient.overallProgress = 50;
+
+      // Keep first two exercises (or fewer if they have fewer)
+      selectedPatient.exercises = selectedPatient.exercises.slice(0, Math.min(2, selectedPatient.exercises.length));
+      selectedPatient.exercises.forEach(ex => {
+        ex.success = 50;
+        ex.kneeROM = 60;
+        ex.emgSymmetry = 0.75;
+        ex.sessions = Math.max(0, ex.sessions || 0);
+      });
+
+      saveToStorage();
+      openPatient(selectedPatient.id);
+      showToast('Progress reset to Level 1', 'warning');
     }
 
     // -------------------------
-    // NAVIGATION
+    // NOTES MANAGEMENT
     // -------------------------
-    function goBack() {
+    function loadNotes(){
+      try{
+        const notesData = JSON.parse(localStorage.getItem(NOTES_KEY) || '{}');
+        const note = notesData[selectedPatient.id];
+        document.getElementById('progressNotes').value = note || '';
+      }catch(e){
+        console.error('Failed to load notes:', e);
+      }
+    }
+
+    function saveNotes(){
+      const notes = document.getElementById('progressNotes').value;
+      try{
+        const notesData = JSON.parse(localStorage.getItem(NOTES_KEY) || '{}');
+        notesData[selectedPatient.id] = notes;
+        localStorage.setItem(NOTES_KEY, JSON.stringify(notesData));
+
+        const savedMsg = document.getElementById('notesSaved');
+        savedMsg.style.display = 'block';
+        setTimeout(() => savedMsg.style.display = 'none', 2500);
+
+        showToast('Notes saved', 'success');
+      }catch(e){
+        console.error('Failed to save notes:', e);
+        showToast('Error saving notes', 'error');
+      }
+    }
+
+    function clearNotes(){
+      if(!selectedPatient) return;
+      document.getElementById('progressNotes').value = '';
+      try{
+        const notesData = JSON.parse(localStorage.getItem(NOTES_KEY) || '{}');
+        delete notesData[selectedPatient.id];
+        localStorage.setItem(NOTES_KEY, JSON.stringify(notesData));
+        showToast('Notes cleared', 'info');
+      }catch(e){
+        console.error('Failed to clear notes:', e);
+        showToast('Error clearing notes', 'error');
+      }
+    }
+
+    // -------------------------
+    // STATS
+    // -------------------------
+    function updateStats(filteredPatients = patients){
+      const total = filteredPatients.length;
+      const active = filteredPatients.filter(p => p.status === 'active').length;
+      const avgProgress = total
+        ? Math.round(filteredPatients.reduce((sum, p) => sum + (Number(p.overallProgress) || 0), 0) / total)
+        : 0;
+
+      document.getElementById('totalPatients').textContent = total;
+      document.getElementById('activeSessions').textContent = active;
+      document.getElementById('avgProgress').textContent = avgProgress + '%';
+      document.getElementById('weekSessions').textContent = total * 2; // mock metric
+    }
+
+    // -------------------------
+    // UTILITIES
+    // -------------------------
+    function formatDate(dateString){
+      const date = new Date(dateString);
+      if(Number.isNaN(date.getTime())) return '—';
+      return date.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    }
+
+    function clamp(n, min, max){
+      const x = Number(n);
+      if(Number.isNaN(x)) return min;
+      return Math.max(min, Math.min(max, x));
+    }
+
+    // Basic HTML escaping for any dynamic string inserted via innerHTML
+    function escapeHTML(str){
+      return String(str ?? '')
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
+    }
+
+    function showToast(message, type='info'){
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+
+      toast.style.background =
+        type === 'error' ? 'var(--error-red)' :
+        type === 'success' ? 'var(--success-green)' :
+        type === 'warning' ? 'var(--warning-orange)' :
+        'var(--text-dark)';
+
+      const icon =
+        type === 'error' ? '❌' :
+        type === 'success' ? '✅' :
+        type === 'warning' ? '⚠️' : 'ℹ️';
+
+      toast.textContent = `${icon} ${message}`;
+      container.appendChild(toast);
+
+      setTimeout(() => toast.remove(), 2800);
+    }
+
+    function goBack(){
       document.getElementById("patientDetail").classList.add("hidden");
       document.getElementById("patients").classList.remove("hidden");
+      updateStats();
       loadPatients();
     }
 
-    // -------------------------
+    // INITIALIZE
+    document.addEventListener('DOMContentLoaded', init);
+
     // LEVEL PROGRESSION
-    // -------------------------
-    function advanceLevel() {
+       function advanceLevel() {
+    document.addEventListener('DOMContentLoaded', init);
       if (selectedPatient.level < 3) {
         selectedPatient.level++;
         openPatient(selectedPatient.id);
@@ -268,6 +923,5 @@
       }
     }
   </script>
-
 </body>
 </html>
