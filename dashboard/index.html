@@ -278,6 +278,7 @@
           <div style="font-weight: 800;">Dr. Therapist</div>
           <div style="font-size: 0.85rem; color: var(--text-light); font-weight: 700;">Physiotherapist</div>
         </div>
+        <button class="icon-btn" onclick="openAddPatientModal()">+ Add Patient</button>
         <button onclick="logout()" class="secondary">Logout</button>
       </div>
     </div>
@@ -348,9 +349,11 @@
         ← Back to Patients
       </button>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <button class="warning" onclick="resetProgress()" id="resetBtn" disabled>Reset Progress</button>
-        <button onclick="advanceLevel()" id="advanceBtn">Advance</button>
-      </div>
+  <button class="warning" onclick="resetProgress()" id="resetBtn" disabled>Reset Progress</button>
+  <button onclick="advanceLevel()" id="advanceBtn">Advance</button>
+  <button class="secondary" onclick="removePatient(selectedPatient.id)">Remove Patient</button>
+</div>
+
     </div>
 
     <div class="card" style="margin-bottom: 20px;">
@@ -402,6 +405,39 @@
       </div>
     </div>
   </div>
+
+<!-- Add Patient Modal -->
+<div id="addPatientModal" class="hidden" style="
+  position:fixed; inset:0; background:rgba(0,0,0,.45);
+  display:flex; align-items:center; justify-content:center;
+  padding:18px; z-index:2000;">
+  <div class="card" style="width:min(520px, 100%);">
+    <h3 style="margin-bottom:12px;">Add New Patient</h3>
+
+    <div style="display:grid; gap:10px;">
+      <input id="newPatientName" placeholder="Full name" />
+      <input id="newPatientAge" type="number" min="1" max="120" placeholder="Age" />
+
+      <select id="newPatientStatus">
+        <option value="active">Active</option>
+        <option value="pending">Pending</option>
+        <option value="completed">Completed</option>
+      </select>
+
+      <select id="newPatientLevel">
+        <option value="1">Level 1</option>
+        <option value="2">Level 2</option>
+        <option value="3">Level 3</option>
+      </select>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+      <button onclick="addPatient()">Add</button>
+      <button class="ghost" onclick="closeAddPatientModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 
   <!-- Toast -->
   <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
@@ -461,6 +497,91 @@
     ];
 
     let selectedPatient = null;
+
+function openAddPatientModal(){
+  document.getElementById('addPatientModal').classList.remove('hidden');
+  document.getElementById('newPatientName').focus();
+}
+
+function closeAddPatientModal(){
+  document.getElementById('addPatientModal').classList.add('hidden');
+  document.getElementById('newPatientName').value = '';
+  document.getElementById('newPatientAge').value = '';
+  document.getElementById('newPatientStatus').value = 'active';
+  document.getElementById('newPatientLevel').value = '1';
+}
+
+function nextPatientId(){
+  const maxId = patients.reduce((m,p) => Math.max(m, Number(p.id) || 0), 0);
+  return maxId + 1;
+}
+
+function addPatient(){
+  const name = document.getElementById('newPatientName').value.trim();
+  const age = Number(document.getElementById('newPatientAge').value);
+  const status = document.getElementById('newPatientStatus').value;
+  const level = Number(document.getElementById('newPatientLevel').value);
+
+  if(!name){
+    showToast('Please enter a name', 'warning');
+    return;
+  }
+  if(!Number.isFinite(age) || age <= 0){
+    showToast('Please enter a valid age', 'warning');
+    return;
+  }
+
+  const newPatient = {
+    id: nextPatientId(),
+    name,
+    age,
+    level,
+    status,
+    injuryDate: new Date().toISOString().slice(0,10),
+    lastSession: new Date().toISOString().slice(0,10),
+    overallProgress: 50,
+    exercises: [
+      { id: Date.now()+1, name: "Wall Squats", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 85, description: "Gradual weight-bearing squats" },
+      { id: Date.now()+2, name: "Heel Slides", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 95, description: "Range of motion improvement" }
+    ]
+  };
+
+  patients.push(newPatient);
+  saveToStorage();
+  closeAddPatientModal();
+  loadPatients();
+  updateStats();
+  showToast(`Added ${name}`, 'success');
+}
+
+function removePatient(patientId){
+  const p = patients.find(x => x.id === patientId);
+  if(!p) return;
+
+  if(!confirm(`Remove ${p.name} (#${p.id})? This cannot be undone.`)) return;
+
+  patients = patients.filter(x => x.id !== patientId);
+
+  // remove saved notes for that patient too
+  try{
+    const notesData = JSON.parse(localStorage.getItem(NOTES_KEY) || '{}');
+    delete notesData[patientId];
+    localStorage.setItem(NOTES_KEY, JSON.stringify(notesData));
+  }catch(e){}
+
+  saveToStorage();
+  showToast(`Removed ${p.name}`, 'warning');
+
+  // if you were viewing them, go back
+  if(selectedPatient && selectedPatient.id === patientId){
+    selectedPatient = null;
+    goBack();
+  }else{
+    loadPatients();
+    updateStats();
+  }
+}
+
 
     // INITIALIZATION
     function init(){
@@ -911,17 +1032,7 @@
     // INITIALIZE
     document.addEventListener('DOMContentLoaded', init);
 
-    // LEVEL PROGRESSION
-       function advanceLevel() {
-    document.addEventListener('DOMContentLoaded', init);
-      if (selectedPatient.level < 3) {
-        selectedPatient.level++;
-        openPatient(selectedPatient.id);
-        alert("Patient advanced to Level " + selectedPatient.level);
-      } else {
-        alert("Max level reached");
-      }
-    }
+    
   </script>
 </body>
 </html>
