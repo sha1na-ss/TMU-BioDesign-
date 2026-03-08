@@ -293,10 +293,6 @@
         <div class="stat-value" id="activeSessions">0</div>
       </div>
       <div class="stat-card card">
-        <div class="stat-label">Avg. Progress</div>
-        <div class="stat-value" id="avgProgress">0%</div>
-      </div>
-      <div class="stat-card card">
         <div class="stat-label">This Week</div>
         <div class="stat-value" id="weekSessions">0</div>
       </div>
@@ -406,6 +402,47 @@
     </div>
   </div>
 
+  <!-- RAW DATA DASHBOARD -->
+  <div id="rawDataDashboard" class="container hidden">
+
+    <div class="top-bar">
+      <button class="secondary icon-btn" onclick="closeRawData()">
+        ← Back to Exercises
+      </button>
+
+      <h2 id="rawExerciseTitle">Raw Data</h2>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-bottom:20px;">
+      <button onclick="showRawTab('signal')" id="signalTabBtn">Signal</button>
+      <button onclick="showRawTab('csv')" class="secondary" id="csvTabBtn">CSV Data</button>
+    </div>
+
+    <div id="signalTab">
+      <div class="card">
+        <h3>Signal Data</h3>
+        <canvas id="signalChart" height="120"></canvas>
+      </div>
+    </div>
+
+    <div id="csvTab" class="hidden">
+      <div class="card">
+        <h3>CSV Raw Data</h3>
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>EMG</th>
+              <th>ROM</th>
+            </tr>
+          </thead>
+          <tbody id="csvTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
 <!-- Add Patient Modal -->
 <div id="addPatientModal" class="hidden" style="
   position:fixed; inset:0; background:rgba(0,0,0,.45);
@@ -442,61 +479,89 @@
   <!-- Toast -->
   <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
+  <!-- Chart.js CDN for raw signal plotting -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <script>
-    
-    // DATA MANAGEMENT
-    
-    const STORAGE_KEY = 'aclRehabPatients';
-    const NOTES_KEY = 'aclRehabNotes';
+  // -------------------------
+  // CONSTANTS & STORAGE KEYS
+  // -------------------------
+  const STORAGE_KEY = 'aclRehabPatients';
+  const NOTES_KEY = 'aclRehabNotes';
 
-    // Default patient data
-    let patients = [
-      {
-        id: 1,
-        name: "Patient 1",
-        age: 28,
-        level: 1,
-        status: "active",
-        injuryDate: "2024-01-15",
-        lastSession: "2024-03-10",
-        overallProgress: 65,
-        exercises: [
-          { id: 101, name: "Wall Squats", success: 75, kneeROM: 65, emgSymmetry: 0.82, sessions: 5, target: 85, description: "Gradual weight-bearing squats" },
-          { id: 102, name: "Straight Leg Raises", success: 88, kneeROM: 70, emgSymmetry: 0.91, sessions: 7, target: 90, description: "Quadriceps activation" },
-          { id: 103, name: "Heel Slides", success: 92, kneeROM: 85, emgSymmetry: 0.89, sessions: 6, target: 95, description: "Range of motion improvement" }
-        ]
-      },
-      {
-        id: 2,
-        name: "Patient 2",
-        age: 32,
-        level: 2,
-        status: "active",
-        injuryDate: "2023-12-10",
-        lastSession: "2024-03-12",
-        overallProgress: 82,
-        exercises: [
-          { id: 201, name: "Forward Lunges", success: 85, kneeROM: 72, emgSymmetry: 0.88, sessions: 8, target: 90, description: "Dynamic stability training" },
-          { id: 202, name: "Step-ups", success: 78, kneeROM: 68, emgSymmetry: 0.85, sessions: 6, target: 85, description: "Progressive height steps" }
-        ]
-      },
-      {
-        id: 3,
-        name: "Patient 3",
-        age: 45,
-        level: 3,
-        status: "pending",
-        injuryDate: "2023-11-05",
-        lastSession: "2024-03-08",
-        overallProgress: 91,
-        exercises: [
-          { id: 301, name: "Single Leg Squats", success: 82, kneeROM: 78, emgSymmetry: 0.92, sessions: 10, target: 95, description: "Advanced stability challenge" },
-          { id: 302, name: "Box Jumps", success: 76, kneeROM: 75, emgSymmetry: 0.87, sessions: 4, target: 90, description: "Plyometric training" }
-        ]
+  let signalChart = null; // Global chart instance
+
+  // Fake raw data for each patient and exercise
+  const fakeRawData = {
+    1: {
+      "Knee Extensions": {
+        signal: Array.from({length: 100}, (_, i) => Math.sin(i * 0.1) + Math.random() * 0.5 + 0.5),
+        csv: Array.from({length: 50}, (_, i) => ({
+          time: (i * 0.02).toFixed(2),
+          emg: (Math.sin(i * 0.1) + Math.random() * 0.5 + 0.5).toFixed(3),
+          rom: (60 + Math.random() * 20).toFixed(1)
+        }))
       }
-    ];
+    },
+    2: {
+      "Knee Extensions": {
+        signal: Array.from({length: 100}, (_, i) => Math.sin(i * 0.12) + Math.random() * 0.4 + 0.6),
+        csv: Array.from({length: 50}, (_, i) => ({
+          time: (i * 0.02).toFixed(2),
+          emg: (Math.sin(i * 0.12) + Math.random() * 0.4 + 0.6).toFixed(3),
+          rom: (65 + Math.random() * 15).toFixed(1)
+        }))
+      },
+      "Squats": {
+        signal: Array.from({length: 100}, (_, i) => Math.cos(i * 0.08) + Math.random() * 0.6 + 0.4),
+        csv: Array.from({length: 50}, (_, i) => ({
+          time: (i * 0.02).toFixed(2),
+          emg: (Math.cos(i * 0.08) + Math.random() * 0.6 + 0.4).toFixed(3),
+          rom: (70 + Math.random() * 25).toFixed(1)
+        }))
+      }
+    }
+  };
 
-    let selectedPatient = null;
+  // -------------------------
+  // UTILITY FUNCTIONS
+  // -------------------------
+  function clamp(num, min, max) { return Math.min(Math.max(num, min), max); }
+  function escapeHTML(str) {
+    return String(str ?? '')
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;')
+      .replaceAll('"','&quot;')
+      .replaceAll("'",'&#039;');
+  }
+  function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    return isNaN(d) ? '-' : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function showToast(msg, type='info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.style.background =
+      type === 'error' ? 'var(--error-red)' :
+      type === 'success' ? 'var(--success-green)' :
+      type === 'warning' ? 'var(--warning-orange)' :
+      'var(--text-dark)';
+    const icon =
+      type === 'error' ? '❌' :
+      type === 'success' ? '✅' :
+      type === 'warning' ? '⚠️' : 'ℹ️';
+    toast.textContent = `${icon} ${msg}`;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 2800);
+  }
+
+  // -------------------------
+  // DATA
+  // -------------------------
+  let patients = [];
+  let selectedPatient = null;
 
 function openAddPatientModal(){
   document.getElementById('addPatientModal').classList.remove('hidden');
@@ -540,9 +605,15 @@ function addPatient(){
     injuryDate: new Date().toISOString().slice(0,10),
     lastSession: new Date().toISOString().slice(0,10),
     overallProgress: 50,
-    exercises: [
-      { id: Date.now()+1, name: "Wall Squats", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 85, description: "Gradual weight-bearing squats" },
-      { id: Date.now()+2, name: "Heel Slides", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 95, description: "Range of motion improvement" }
+    exercises: level === 1 ? [
+      { id: Date.now()+1, name: "Knee Extensions", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 85, description: "Quadriceps strengthening" }
+    ] : level === 2 ? [
+      { id: Date.now()+1, name: "Knee Extensions", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 85, description: "Quadriceps strengthening" },
+      { id: Date.now()+2, name: "Squats", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 95, description: "Lower body strength" }
+    ] : [
+      { id: Date.now()+1, name: "Knee Extensions", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 85, description: "Quadriceps strengthening" },
+      { id: Date.now()+2, name: "Squats", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 95, description: "Lower body strength" },
+      { id: Date.now()+3, name: "Walking", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 95, description: "Gait rehabilitation" }
     ]
   };
 
@@ -583,52 +654,132 @@ function removePatient(patientId){
 }
 
 
-    // INITIALIZATION
-    function init(){
-      loadFromStorage();
-      updateStats();
-      loadPatients();
-      setUserInitial();
-      showToast('Welcome to ACL Rehab Dashboard!', 'success');
-    }
+  // -------------------------
+  // INITIALIZATION
+  // -------------------------
+  function init() {
+    loadFromStorage();
+    updateStats();
+    loadPatients();
+    setUserInitial();
+    showToast('Welcome to ACL Rehab Dashboard!', 'success');
+  }
 
-    function setUserInitial(){
-      const el = document.getElementById('userInitial');
-      const name = 'Dr. Therapist';
-      el.textContent = (name.trim()[0] || 'T').toUpperCase();
-    }
+  window.onload = init;
 
-    function loadFromStorage(){
-      try{
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if(saved){
-          const parsed = JSON.parse(saved);
-          if(Array.isArray(parsed) && parsed.length){
-            patients = parsed;
+  function setUserInitial(){
+    const el = document.getElementById('userInitial');
+    const name = 'Dr. Therapist';
+    el.textContent = (name.trim()[0] || 'T').toUpperCase();
+  }
+
+  function loadFromStorage(){
+    try{
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if(saved){
+        const parsed = JSON.parse(saved);
+        if(Array.isArray(parsed)){
+          patients = parsed;
+          if(patients.length === 0){
+            // Load sample if empty
+            patients = [
+              {
+                id: 1,
+                name: "Patient 1",
+                age: 28,
+                level: 1,
+                status: "active",
+                injuryDate: "2024-01-15",
+                lastSession: "2024-03-10",
+                overallProgress: 75,
+                exercises: [
+                  { id: 101, name: "Knee Extensions", success: 75, kneeROM: 65, emgSymmetry: 0.82, sessions: 5, target: 85, description: "Quadriceps strengthening exercise" }
+                ]
+              },
+              {
+                id: 2,
+                name: "Patient 2",
+                age: 32,
+                level: 2,
+                status: "active",
+                injuryDate: "2024-02-20",
+                lastSession: "2024-03-05",
+                overallProgress: 85,
+                exercises: [
+                  { id: 201, name: "Knee Extensions", success: 80, kneeROM: 68, emgSymmetry: 0.85, sessions: 6, target: 85, description: "Quadriceps strengthening exercise" },
+                  { id: 202, name: "Squats", success: 90, kneeROM: 72, emgSymmetry: 0.92, sessions: 8, target: 95, description: "Lower body strengthening" }
+                ]
+              }
+            ];
+            saveToStorage();
           }
         }
-      }catch(e){
-        console.error('Failed to load from storage:', e);
-        showToast('Error loading patient data', 'error');
+      } else {
+        // Load sample
+        patients = [
+          {
+            id: 1,
+            name: "Patient 1",
+            age: 28,
+            level: 1,
+            status: "active",
+            injuryDate: "2024-01-15",
+            lastSession: "2024-03-10",
+            overallProgress: 75,
+            exercises: [
+              { id: 101, name: "Knee Extensions", success: 75, kneeROM: 65, emgSymmetry: 0.82, sessions: 5, target: 85, description: "Quadriceps strengthening exercise" }
+            ]
+          },
+          {
+            id: 2,
+            name: "Patient 2",
+            age: 32,
+            level: 2,
+            status: "active",
+            injuryDate: "2024-02-20",
+            lastSession: "2024-03-05",
+            overallProgress: 85,
+            exercises: [
+              { id: 201, name: "Knee Extensions", success: 80, kneeROM: 68, emgSymmetry: 0.85, sessions: 6, target: 85, description: "Quadriceps strengthening exercise" },
+              { id: 202, name: "Squats", success: 90, kneeROM: 72, emgSymmetry: 0.92, sessions: 8, target: 95, description: "Lower body strengthening" }
+            ]
+          }
+        ];
+        saveToStorage();
       }
+    } catch(e) { 
+      console.error(e); 
+      showToast('Error loading patients', 'error'); 
+      // Fallback to sample
+      patients = [
+        {
+          id: 1,
+          name: "Patient 1",
+          age: 28,
+          level: 1,
+          status: "active",
+          injuryDate: "2024-01-15",
+          lastSession: "2024-03-10",
+          overallProgress: 75,
+          exercises: [
+            { id: 101, name: "Knee Extensions", success: 75, kneeROM: 65, emgSymmetry: 0.82, sessions: 5, target: 85, description: "Quadriceps strengthening exercise" }
+          ]
+        }
+      ];
     }
+  }
 
-    function saveToStorage(){
-      try{
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(patients));
-      }catch(e){
-        console.error('Failed to save to storage:', e);
-        showToast('Error saving data', 'error');
-      }
-    }
+  function saveToStorage(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(patients)); }
 
-    // LOGIN / LOGOUT
-    function logout(){
-      if(confirm('Are you sure you want to logout?')){
-        localStorage.removeItem('lastLogin');
-        window.location.href = "login.html";
-      }
+  // -------------------------
+  // LOGIN / LOGOUT
+  // -------------------------
+  function logout(){
+    if(confirm('Are you sure you want to logout?')){
+      localStorage.removeItem('lastLogin');
+      window.location.href = "login.html";
     }
+  }
 
     // PATIENT LIST
     function loadPatients(filteredPatients = patients){
@@ -809,9 +960,10 @@ function removePatient(patientId){
             <span class="value ${emgClass}">${Number(ex.emgSymmetry).toFixed(2)}</span>
           </div>
 
-          <div style="margin-top: 14px; display:flex; gap:10px;">
+          <div style="margin-top: 14px; display:flex; gap:10px; flex-wrap:wrap;">
             <button onclick="updateExercise(${ex.id}, 'increase')" style="flex:1;">+ Improve</button>
             <button onclick="updateExercise(${ex.id}, 'decrease')" class="secondary" style="flex:1;">- Needs Work</button>
+            <button onclick="viewRawData(${ex.id})" class="ghost" style="flex:1;">View Raw Data</button>
           </div>
         `;
         exList.appendChild(div);
@@ -864,30 +1016,34 @@ function removePatient(patientId){
 
       selectedPatient.level++;
 
-      // Add new exercises when leveling up
+      // Add new exercise for the level
       if(selectedPatient.level === 2){
         selectedPatient.exercises.push({
           id: Date.now(),
-          name: "Lateral Step-ups",
-          success: 65,
-          kneeROM: 68,
-          emgSymmetry: 0.78,
-          sessions: 2,
-          target: 85,
-          description: "Sideways stability training"
+          name: "Squats",
+          success: 50,
+          kneeROM: 60,
+          emgSymmetry: 0.75,
+          sessions: 0,
+          target: 95,
+          description: "Lower body strength"
         });
       }else if(selectedPatient.level === 3){
         selectedPatient.exercises.push({
           id: Date.now(),
-          name: "Depth Jumps",
-          success: 60,
-          kneeROM: 72,
-          emgSymmetry: 0.82,
-          sessions: 1,
-          target: 90,
-          description: "Advanced plyometrics"
+          name: "Walking",
+          success: 50,
+          kneeROM: 60,
+          emgSymmetry: 0.75,
+          sessions: 0,
+          target: 95,
+          description: "Gait rehabilitation"
         });
       }
+
+      // Recalculate overall progress as average
+      const totalSuccess = selectedPatient.exercises.reduce((sum, ex) => sum + (Number(ex.success) || 0), 0);
+      selectedPatient.overallProgress = Math.round(totalSuccess / selectedPatient.exercises.length);
 
       saveToStorage();
       openPatient(selectedPatient.id);
@@ -900,14 +1056,17 @@ function removePatient(patientId){
       selectedPatient.level = 1;
       selectedPatient.overallProgress = 50;
 
-      // Keep first two exercises (or fewer if they have fewer)
-      selectedPatient.exercises = selectedPatient.exercises.slice(0, Math.min(2, selectedPatient.exercises.length));
-      selectedPatient.exercises.forEach(ex => {
-        ex.success = 50;
-        ex.kneeROM = 60;
-        ex.emgSymmetry = 0.75;
-        ex.sessions = Math.max(0, ex.sessions || 0);
-      });
+      // Reset to only Knee Extensions
+      selectedPatient.exercises = [{
+        id: Date.now(),
+        name: "Knee Extensions",
+        success: 50,
+        kneeROM: 60,
+        emgSymmetry: 0.75,
+        sessions: 0,
+        target: 85,
+        description: "Quadriceps strengthening"
+      }];
 
       saveToStorage();
       openPatient(selectedPatient.id);
@@ -965,13 +1124,10 @@ function removePatient(patientId){
     function updateStats(filteredPatients = patients){
       const total = filteredPatients.length;
       const active = filteredPatients.filter(p => p.status === 'active').length;
-      const avgProgress = total
-        ? Math.round(filteredPatients.reduce((sum, p) => sum + (Number(p.overallProgress) || 0), 0) / total)
-        : 0;
+  
 
       document.getElementById('totalPatients').textContent = total;
       document.getElementById('activeSessions').textContent = active;
-      document.getElementById('avgProgress').textContent = avgProgress + '%';
       document.getElementById('weekSessions').textContent = total * 2; // mock metric
     }
 
@@ -1027,6 +1183,113 @@ function removePatient(patientId){
       document.getElementById("patients").classList.remove("hidden");
       updateStats();
       loadPatients();
+    }
+
+    // RAW DATA DASHBOARD FUNCTIONS
+    function viewRawData(exerciseId){
+      const exercise = selectedPatient.exercises.find(ex => ex.id === exerciseId);
+      if(!exercise) return;
+
+      document.getElementById("patientDetail").classList.add("hidden");
+      document.getElementById("rawDataDashboard").classList.remove("hidden");
+
+      document.getElementById("rawExerciseTitle").innerText = `Raw Data - ${exercise.name}`;
+
+      // Load signal data
+      loadSignalData(exercise);
+
+      // Load CSV data
+      loadCSVData(exercise);
+    }
+
+    function closeRawData(){
+      document.getElementById("rawDataDashboard").classList.add("hidden");
+      document.getElementById("patientDetail").classList.remove("hidden");
+    }
+
+    function showRawTab(tab){
+      document.getElementById("signalTab").classList.toggle("hidden", tab !== "signal");
+      document.getElementById("csvTab").classList.toggle("hidden", tab !== "csv");
+      document.getElementById("signalTabBtn").classList.toggle("secondary", tab !== "signal");
+      document.getElementById("csvTabBtn").classList.toggle("secondary", tab !== "csv");
+    }
+
+    function loadSignalData(exercise){
+      if(signalChart) signalChart.destroy(); // Destroy previous chart
+      const ctx = document.getElementById('signalChart').getContext('2d');
+      const data = fakeRawData[selectedPatient.id]?.[exercise.name];
+      if(!data) {
+        // Fallback mock data
+        const time = [];
+        const amplitude = [];
+        for(let i = 0; i < 100; i++){
+          time.push(i * 0.01);
+          amplitude.push(Math.sin(i * 0.1) + Math.random() * 0.5);
+        }
+        var chartData = { labels: time, datasets: [{ label: 'EMG Amplitude', data: amplitude, borderColor: 'var(--primary-blue)', backgroundColor: 'rgba(37, 99, 235, 0.1)', fill: true }] };
+      } else {
+        const time = Array.from({length: data.signal.length}, (_, i) => (i * 0.01).toFixed(2));
+        var chartData = { labels: time, datasets: [{ label: 'EMG Amplitude', data: data.signal, borderColor: 'var(--primary-blue)', backgroundColor: 'rgba(37, 99, 235, 0.1)', fill: true }] };
+      }
+
+      signalChart = new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: 'Time (s)' } },
+            y: { title: { display: true, text: 'Amplitude (V)' } }
+          }
+        }
+      });
+    }
+
+    function loadCSVData(exercise){
+      const tbody = document.getElementById('csvTableBody');
+      tbody.innerHTML = '';
+
+      const data = fakeRawData[selectedPatient.id]?.[exercise.name]?.csv;
+      if(!data) {
+        // Fallback mock data
+        var csvData = Array.from({length: 50}, (_, i) => ({
+          time: (i * 0.02).toFixed(2),
+          emg: (Math.sin(i * 0.1) + Math.random() * 0.5).toFixed(3),
+          rom: (60 + Math.random() * 20).toFixed(1)
+        }));
+      } else {
+        var csvData = data;
+      }
+
+      csvData.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.time}</td>
+          <td>${row.emg}</td>
+          <td>${row.rom}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Add download button if not exists
+      if(!document.getElementById('downloadCSVBtn')){
+        const downloadBtn = document.createElement('button');
+        downloadBtn.id = 'downloadCSVBtn';
+        downloadBtn.innerText = 'Download CSV';
+        downloadBtn.onclick = () => downloadCSV(csvData, exercise.name);
+        document.getElementById('csvTab').querySelector('.card').appendChild(downloadBtn);
+      }
+    }
+
+    function downloadCSV(data, exerciseName){
+      const csvContent = 'Time,EMG,ROM\n' + data.map(row => `${row.time},${row.emg},${row.rom}`).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${exerciseName.replace(/\s+/g, '_')}_raw_data.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
     }
 
     // INITIALIZE
