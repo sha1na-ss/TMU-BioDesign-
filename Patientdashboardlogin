@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RehabTrack — Patient Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --ink: #08090a;
+      --ink2: #0f1013;
+      --ink3: #16181d;
+      --ink4: #1e2026;
+      --rule: rgba(255,255,255,0.06);
+      --rule2: rgba(255,255,255,0.1);
+      --neon: #4d9fff;
+      --neon2: #a78bfa;
+      --neon3: #93c5fd;
+      --rose: #ff4d6d;
+      --text: #f0f2f5;
+      --muted: rgba(240,242,245,0.45);
+      --muted2: rgba(240,242,245,0.22);
+      --font-display: 'Syne', sans-serif;
+      --font-mono: 'Space Mono', monospace;
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: var(--font-display);
+      background: var(--ink);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Noise */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.022;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* Grid */
+    .grid-bg {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(77,159,255,0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(77,159,255,0.045) 1px, transparent 1px);
+      background-size: 56px 56px;
+      animation: gridDrift 24s linear infinite;
+    }
+    @keyframes gridDrift {
+      from { transform: translateY(0); }
+      to   { transform: translateY(56px); }
+    }
+
+    /* Ambient blobs */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(110px);
+      pointer-events: none;
+    }
+    .blob-1 {
+      width: 500px; height: 500px;
+      background: rgba(77,159,255,0.07);
+      top: -180px; left: -120px;
+      animation: blobFloat 14s ease-in-out infinite;
+    }
+    .blob-2 {
+      width: 380px; height: 380px;
+      background: rgba(167,139,250,0.05);
+      bottom: -120px; right: -80px;
+      animation: blobFloat 18s ease-in-out infinite reverse;
+    }
+    @keyframes blobFloat {
+      0%,100% { transform: translate(0,0) scale(1); }
+      50% { transform: translate(20px,-30px) scale(1.05); }
+    }
+
+    /* Panel */
+    .panel {
+      position: relative; z-index: 10;
+      width: min(420px, calc(100vw - 32px));
+      background: rgba(15,16,19,0.85);
+      backdrop-filter: blur(24px);
+      border: 1px solid var(--rule2);
+      border-radius: 18px;
+      padding: 44px 36px 36px;
+      box-shadow:
+        0 0 0 1px rgba(77,159,255,0.08),
+        0 32px 80px rgba(0,0,0,0.6),
+        inset 0 1px 0 rgba(255,255,255,0.05);
+      animation: panelIn 0.55s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    @keyframes panelIn {
+      from { opacity:0; transform: translateY(28px) scale(0.96); }
+      to   { opacity:1; transform: translateY(0) scale(1); }
+    }
+
+    /* Top edge glow */
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 20%; right: 20%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(77,159,255,0.5), transparent);
+      border-radius: 999px;
+    }
+
+    /* Logo */
+    .logo {
+      display: flex; align-items: center; gap: 13px;
+      margin-bottom: 36px;
+    }
+    .logo-mark {
+      width: 40px; height: 40px; flex-shrink: 0;
+    }
+    .logo-mark svg { width: 100%; height: 100%; }
+    .logo-wordmark { display: flex; flex-direction: column; line-height: 1; }
+    .logo-wordmark .brand {
+      font-weight: 800; font-size: 1.05rem; letter-spacing: -0.02em;
+    }
+    .logo-wordmark .sub {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--neon);
+      margin-top: 3px;
+    }
+
+    /* Heading */
+    .heading {
+      font-weight: 800;
+      font-size: 1.65rem;
+      letter-spacing: -0.03em;
+      margin-bottom: 5px;
+      line-height: 1.1;
+    }
+    .sub-heading {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 32px;
+      font-weight: 500;
+    }
+
+    /* Fields */
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted2);
+      margin-bottom: 8px;
+    }
+    .field input {
+      width: 100%;
+      padding: 12px 15px;
+      background: var(--ink3);
+      border: 1px solid var(--rule2);
+      border-radius: 9px;
+      color: var(--text);
+      font-family: var(--font-display);
+      font-size: 0.92rem;
+      font-weight: 500;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field input::placeholder { color: var(--muted2); }
+    .field input:focus {
+      border-color: rgba(77,159,255,0.5);
+      box-shadow: 0 0 0 3px rgba(77,159,255,0.1);
+    }
+
+    /* PIN input — monospace */
+    #pin {
+      font-family: var(--font-mono);
+      letter-spacing: 0.3em;
+      font-size: 1.1rem;
+    }
+
+    /* Login btn */
+    .login-btn {
+      width: 100%;
+      margin-top: 8px;
+      padding: 13px;
+      border-radius: 9px;
+      border: none;
+      background: var(--neon);
+      color: #fff;
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .login-btn::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .login-btn:hover::before { opacity: 1; }
+    .login-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(77,159,255,0.3);
+    }
+    .login-btn:active { transform: translateY(0); }
+
+    /* Error */
+    .error-msg {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      color: var(--rose);
+      text-align: center;
+      margin-top: 10px;
+      height: 16px;
+      transition: opacity 0.2s;
+      opacity: 0;
+    }
+    .error-msg.show { opacity: 1; }
+
+    /* Divider */
+    .divider {
+      display: flex; align-items: center; gap: 12px;
+      margin: 24px 0 18px;
+    }
+    .divider-line { flex: 1; height: 1px; background: var(--rule); }
+    .divider-text {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted2);
+      white-space: nowrap;
+    }
+
+    /* Demo accounts */
+    .demo-block {
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      background: var(--ink3);
+      overflow: hidden;
+    }
+    .demo-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--rule);
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted2);
+    }
+    .demo-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+      border-bottom: 1px solid var(--rule);
+      gap: 10px;
+    }
+    .demo-row:last-child { border-bottom: none; }
+    .demo-row:hover { background: rgba(77,159,255,0.05); }
+    .demo-row-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+    .demo-row-level {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--muted);
+      margin-top: 2px;
+      letter-spacing: 0.05em;
+    }
+    .demo-creds {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--neon);
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      opacity: 0.7;
+      transition: opacity 0.15s;
+    }
+    .demo-row:hover .demo-creds { opacity: 1; }
+
+    /* Footer link */
+    .footer-link {
+      text-align: center;
+      margin-top: 22px;
+      font-size: 0.78rem;
+      color: var(--muted2);
+    }
+    .footer-link a {
+      color: var(--neon3);
+      text-decoration: none;
+      font-weight: 700;
+      transition: color 0.15s;
+    }
+    .footer-link a:hover { color: var(--neon); }
+  </style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+
+<div class="panel">
+
+  <div class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="19" stroke="rgba(77,159,255,0.3)" stroke-width="1"/>
+        <path d="M10 20 L15 13 L22 27 L27 18" stroke="#4d9fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="20" cy="20" r="2.5" fill="#4d9fff" opacity="0.7"/>
+      </svg>
+    </div>
+    <div class="logo-wordmark">
+      <span class="brand">RehabTrack</span>
+      <span class="sub">Patient Portal</span>
+    </div>
+  </div>
+
+  <div class="heading">Welcome back</div>
+  <div class="sub-heading">Log in to start your exercise session</div>
+
+  <div class="field">
+    <label>Patient ID</label>
+    <input type="text" id="patientId" placeholder="e.g. P-1001" autocomplete="off" spellcheck="false"/>
+  </div>
+  <div class="field">
+    <label>PIN</label>
+    <input type="password" id="pin" placeholder="• • • •" maxlength="4" autocomplete="off"/>
+  </div>
+
+  <button class="login-btn" onclick="login()">Start Session →</button>
+  <div class="error-msg" id="errorMsg">Invalid patient ID or PIN</div>
+
+  <div class="divider">
+    <div class="divider-line"></div>
+    <div class="divider-text">Demo Accounts</div>
+    <div class="divider-line"></div>
+  </div>
+
+  <div class="demo-block">
+    <div class="demo-header">Click to auto-fill credentials</div>
+    <div class="demo-row" onclick="fillDemo('P-1001','1234')">
+      <div>
+        <div class="demo-row-name">Patient 1</div>
+        <div class="demo-row-level">LEVEL 1 · ACTIVE</div>
+      </div>
+      <div class="demo-creds">P-1001 / 1234</div>
+    </div>
+    <div class="demo-row" onclick="fillDemo('P-1002','5678')">
+      <div>
+        <div class="demo-row-name">Patient 2</div>
+        <div class="demo-row-level">LEVEL 2 · ACTIVE</div>
+      </div>
+      <div class="demo-creds">P-1002 / 5678</div>
+    </div>
+    <div class="demo-row" onclick="fillDemo('P-1003','9012')">
+      <div>
+        <div class="demo-row-name">Patient 3</div>
+        <div class="demo-row-level">LEVEL 3 · PENDING</div>
+      </div>
+      <div class="demo-creds">P-1003 / 9012</div>
+    </div>
+  </div>
+
+  <div class="footer-link">
+    Physiotherapist? <a href="index.html">Therapist Portal →</a>
+  </div>
+
+</div>
+
+<script>
+  const PATIENTS = {
+    'P-1001': { pin:'1234', patientId:1, name:'Patient 1', level:1 },
+    'P-1002': { pin:'5678', patientId:2, name:'Patient 2', level:2 },
+    'P-1003': { pin:'9012', patientId:3, name:'Patient 3', level:3 },
+  };
+
+  function fillDemo(id, pin) {
+    document.getElementById('patientId').value = id;
+    document.getElementById('pin').value = pin;
+    document.getElementById('patientId').dispatchEvent(new Event('input'));
+  }
+
+  function login() {
+    const id = document.getElementById('patientId').value.trim().toUpperCase();
+    const pin = document.getElementById('pin').value.trim();
+    const err = document.getElementById('errorMsg');
+    const account = PATIENTS[id];
+    if (account && account.pin === pin) {
+      sessionStorage.setItem('patientSession', JSON.stringify({
+        portalId: id,
+        patientId: account.patientId,
+        name: account.name,
+        level: account.level,
+      }));
+      window.location.href = 'patient-dashboard.html';
+    } else {
+      err.classList.add('show');
+      document.getElementById('pin').style.borderColor = 'rgba(255,77,109,0.5)';
+      setTimeout(() => {
+        err.classList.remove('show');
+        document.getElementById('pin').style.borderColor = '';
+      }, 3000);
+    }
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+</script>
+</body>
+</html>
