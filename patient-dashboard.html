@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RehabTrack — Motion Studio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --ink: #08090a;
+      --ink2: #0f1013;
+      --ink3: #16181d;
+      --ink4: #1e2026;
+      --rule: rgba(255,255,255,0.06);
+      --rule2: rgba(255,255,255,0.1);
+      --neon: #4d9fff;
+      --neon2: #a78bfa;
+      --neon3: #93c5fd;
+      --amber: #60a5fa;
+      --rose: #ff4d6d;
+      --text: #f0f2f5;
+      --muted: rgba(240,242,245,0.45);
+      --muted2: rgba(240,242,245,0.25);
+
+      --font-display: 'Syne', sans-serif;
+      --font-mono: 'Space Mono', monospace;
+      --font-serif: 'Instrument Serif', serif;
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    html { height:100%; }
+
+    body {
+      font-family: var(--font-display);
+      background: var(--ink);
+      color: var(--text);
+      min-height: 100vh;
+      overflow: hidden;
+      cursor: default;
+    }
+
+    body::before {
+      content:'';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.022;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    .ambient {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .ambient-1 {
+      width: 600px; height: 600px;
+      background: rgba(77,159,255,0.06);
+      top: -200px; left: -100px;
+      animation: ambientFloat 12s ease-in-out infinite;
+    }
+    .ambient-2 {
+      width: 500px; height: 500px;
+      background: rgba(167,139,250,0.04);
+      bottom: -150px; right: 200px;
+      animation: ambientFloat 15s ease-in-out infinite reverse;
+    }
+    @keyframes ambientFloat {
+      0%,100% { transform: translate(0,0) scale(1); }
+      50% { transform: translate(30px, -40px) scale(1.08); }
+    }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      position: relative; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px;
+      height: 58px;
+      background: rgba(8,9,10,0.9);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .logo {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .logo-mark {
+      width: 30px; height: 30px;
+      position: relative;
+    }
+    .logo-mark svg { width: 100%; height: 100%; }
+    .logo-wordmark {
+      display: flex; flex-direction: column; line-height: 1;
+    }
+    .logo-wordmark .brand {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .logo-wordmark .tagline {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      color: var(--neon);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-top: 1px;
+    }
+
+    .live-pill {
+      display: flex; align-items: center; gap: 7px;
+      padding: 5px 12px;
+      border: 1px solid var(--rule2);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.03);
+    }
+    .live-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--muted2);
+    }
+    .live-dot.active {
+      background: #93c5fd;
+      box-shadow: 0 0 8px #93c5fd;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:1; transform: scale(1); }
+      50% { opacity:0.5; transform: scale(0.8); }
+    }
+    .live-text {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+
+    .patient-chip {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .avatar-ring {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 1.5px solid var(--neon);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800;
+      font-size: 0.8rem;
+      color: var(--neon);
+      background: rgba(77,159,255,0.08);
+    }
+    .patient-meta .pname {
+      font-weight: 700;
+      font-size: 0.82rem;
+      letter-spacing: -0.01em;
+    }
+    .patient-meta .plevel {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+
+    .topbar-actions {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .ghost-btn {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.75rem;
+      letter-spacing: 0.04em;
+      padding: 7px 14px;
+      border-radius: 7px;
+      border: 1px solid var(--rule2);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .ghost-btn:hover { background: var(--rule); color: var(--text); }
+
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      height: calc(100vh - 58px);
+      position: relative; z-index: 1;
+    }
+
+    .camera-section {
+      position: relative;
+      background: var(--ink2);
+      overflow: hidden;
+    }
+
+    #videoEl {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+      opacity: 0;
+    }
+    #poseCanvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    .scanline {
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(77,159,255,0.008) 2px,
+        rgba(77,159,255,0.008) 4px
+      );
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 1s;
+    }
+    .scanline.active { opacity: 1; }
+
+    .bracket {
+      position: absolute;
+      width: 40px; height: 40px;
+      border-color: rgba(77,159,255,0.35);
+      border-style: solid;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+    .bracket.show { opacity: 1; }
+    .bracket-tl { top:20px; left:20px; border-width:2px 0 0 2px; }
+    .bracket-tr { top:20px; right:20px; border-width:2px 2px 0 0; }
+    .bracket-bl { bottom:20px; left:20px; border-width:0 0 2px 2px; }
+    .bracket-br { bottom:20px; right:20px; border-width:0 2px 2px 0; }
+
+    /* Camera empty state */
+    .camera-empty {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 20px;
+      z-index: 5;
+    }
+    .camera-empty-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(77,159,255,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(77,159,255,0.05) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+    .camera-empty-icon {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      border: 1px solid rgba(77,159,255,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+      background: rgba(77,159,255,0.04);
+      position: relative;
+    }
+    .camera-empty-icon::before {
+      content: '';
+      position: absolute; inset: -8px;
+      border-radius: 50%;
+      border: 1px dashed rgba(77,159,255,0.15);
+      animation: spin 12s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .camera-empty h2 {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+      text-align: center;
+    }
+    .camera-empty p {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* Exercise badge — top left */
+    .hud-badge {
+      position: absolute; top: 20px; left: 20px;
+      z-index: 20;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .exercise-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--neon);
+      padding: 5px 12px;
+      border: 1px solid rgba(77,159,255,0.25);
+      border-radius: 5px;
+      background: rgba(77,159,255,0.08);
+      backdrop-filter: blur(10px);
+    }
+
+    .rep-hud {
+      position: absolute; top: 20px; right: 20px;
+      z-index: 20;
+      text-align: right;
+    }
+    .rep-num {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 5rem;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      color: #fff;
+      text-shadow: 0 0 40px rgba(77,159,255,0.4);
+      transition: transform 0.1s;
+    }
+    .rep-num.pop {
+      animation: repPop 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes repPop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    .rep-unit {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-top: -4px;
+    }
+
+    .feedback-strip {
+      position: absolute;
+      bottom: 70px; left: 50%; transform: translateX(-50%);
+      z-index: 20;
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      background: rgba(8,9,10,0.8);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--rule2);
+      min-width: 240px;
+      transition: border-color 0.3s;
+      white-space: nowrap;
+    }
+    .feedback-strip.good { border-color: rgba(125,255,160,0.35); }
+    .feedback-strip.warn { border-color: rgba(255,179,64,0.35); }
+    .feedback-strip.bad  { border-color: rgba(255,77,109,0.35); }
+
+    .feedback-strip-icon { font-size: 1.1rem; }
+    .feedback-strip-text {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .angle-hud {
+      position: absolute; bottom: 20px; left: 20px;
+      z-index: 20;
+      display: none;
+    }
+    .angle-hud.show { display: block; }
+    .angle-label {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .angle-value {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.8rem;
+      letter-spacing: -0.03em;
+      color: var(--neon);
+      line-height: 1;
+    }
+
+    .camera-controls {
+      position: absolute; bottom: 20px; right: 20px;
+      z-index: 20;
+    }
+    .start-btn {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 10px 22px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--neon);
+      color: #fff;
+    }
+    .start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(77,159,255,0.3); }
+    .start-btn.stop {
+      background: var(--rose);
+      color: #fff;
+      box-shadow: none;
+    }
+    .start-btn.stop:hover { box-shadow: 0 8px 24px rgba(255,77,109,0.25); }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      background: var(--ink2);
+      border-left: 1px solid var(--rule);
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      scrollbar-width: thin;
+      scrollbar-color: var(--rule2) transparent;
+    }
+    .sidebar::-webkit-scrollbar { width: 3px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--rule2); }
+
+    .sb-block {
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .sb-label {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted2);
+      margin-bottom: 14px;
+    }
+
+    .ex-tiles { display: flex; flex-direction: column; gap: 6px; }
+    .ex-tile {
+      display: flex; align-items: center; gap: 13px;
+      padding: 12px 14px;
+      border-radius: 9px;
+      border: 1px solid var(--rule);
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .ex-tile::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(77,159,255,0.06), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .ex-tile:hover::before { opacity: 1; }
+    .ex-tile:hover { border-color: rgba(77,159,255,0.2); }
+    .ex-tile.active {
+      border-color: rgba(77,159,255,0.35);
+      background: rgba(77,159,255,0.05);
+    }
+    .ex-tile.active::before { opacity: 1; }
+    .ex-tile .tile-icon {
+      font-size: 1.3rem;
+      width: 38px; height: 38px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--rule);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .ex-tile.active .tile-icon {
+      background: rgba(77,159,255,0.08);
+      border-color: rgba(77,159,255,0.25);
+    }
+    .tile-info .tile-name {
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: -0.01em;
+    }
+    .tile-info .tile-desc {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .tile-arrow {
+      margin-left: auto;
+      color: var(--muted2);
+      font-size: 0.75rem;
+      transition: transform 0.2s;
+    }
+    .ex-tile.active .tile-arrow,
+    .ex-tile:hover .tile-arrow { color: var(--neon); transform: translateX(2px); }
+
+    .stats-cluster {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .stat-cell {
+      padding: 14px 12px;
+      border-radius: 9px;
+      border: 1px solid var(--rule);
+      background: var(--ink3);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-cell::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(77,159,255,0.25), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .stat-cell.lit::after { opacity: 1; }
+    .stat-val {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.55rem;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      line-height: 1;
+    }
+    .stat-val.mono {
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      letter-spacing: 0;
+    }
+    .stat-lbl {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted2);
+      margin-top: 5px;
+    }
+
+    /* Form quality bar */
+    .form-quality {
+      margin-top: 14px;
+    }
+    .form-quality-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 7px;
+    }
+    .form-quality-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted2);
+    }
+    .form-quality-pct {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 0.9rem;
+      color: var(--neon);
+      letter-spacing: -0.02em;
+    }
+    .form-bar-track {
+      height: 3px;
+      background: var(--ink4);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .form-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--neon);
+      box-shadow: 0 0 8px rgba(77,159,255,0.5);
+      transition: width 0.5s ease, background 0.3s;
+      width: 0%;
+    }
+
+    /* Instructions */
+    .instruction-list {
+      display: flex; flex-direction: column; gap: 9px;
+      list-style: none;
+    }
+    .instruction-list li {
+      display: flex; align-items: flex-start; gap: 11px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 20px; height: 20px;
+      border-radius: 5px;
+      background: rgba(77,159,255,0.08);
+      border: 1px solid rgba(77,159,255,0.18);
+      color: var(--neon);
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 1px;
+    }
+
+    /* History */
+    .history-entries { display: flex; flex-direction: column; gap: 7px; }
+    .history-entry {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: var(--ink3);
+      border: 1px solid var(--rule);
+    }
+    .he-reps {
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+    .he-meta {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .score-chip {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 5px;
+      letter-spacing: 0.04em;
+    }
+    .chip-good { background: rgba(147,197,253,0.1); color: var(--neon3); border: 1px solid rgba(147,197,253,0.2); }
+    .chip-fair { background: rgba(96,165,250,0.1); color: var(--amber); border: 1px solid rgba(96,165,250,0.2); }
+    .chip-poor { background: rgba(255,77,109,0.1); color: var(--rose); border: 1px solid rgba(255,77,109,0.2); }
+
+    /* Save Button */
+    .save-btn {
+      width: 100%;
+      padding: 13px;
+      border-radius: 9px;
+      border: none;
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 0.8rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--ink4);
+      color: var(--muted);
+      border: 1px solid var(--rule);
+    }
+    .save-btn:not(:disabled) {
+      background: rgba(77,159,255,0.1);
+      color: var(--neon);
+      border-color: rgba(77,159,255,0.3);
+    }
+    .save-btn:not(:disabled):hover {
+      background: rgba(125,255,160,0.15);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(77,159,255,0.15);
+    }
+
+    .toast-wrap {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 9000;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.82rem;
+      padding: 10px 20px;
+      border-radius: 9px;
+      background: rgba(15,16,19,0.95);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--rule2);
+      color: var(--text);
+      white-space: nowrap;
+      animation: toastIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes toastIn {
+      from { opacity:0; transform: translateY(12px) scale(0.95); }
+      to   { opacity:1; transform: translateY(0) scale(1); }
+    }
+
+    /* No exercise overlay */
+    #noExOverlay {
+      position: absolute; inset: 0;
+      background: rgba(8,9,10,0.9);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 15;
+    }
+
+    /* Crosshair decoration */
+    .crosshair {
+      position: absolute;
+      pointer-events: none;
+      z-index: 3;
+    }
+    .crosshair::before, .crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(77,159,255,0.12);
+    }
+    .crosshair-center {
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+    }
+    .crosshair-center::before {
+      width: 1px; height: 60px;
+      top: -30px; left: 0;
+    }
+    .crosshair-center::after {
+      height: 1px; width: 60px;
+      left: -30px; top: 0;
+    }
+
+    @media (max-width: 900px) {
+      .main { grid-template-columns: 1fr; }
+      .sidebar { max-height: 55vh; }
+      body { overflow: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="ambient ambient-1"></div>
+<div class="ambient ambient-2"></div>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="15" cy="15" r="14" stroke="rgba(77,159,255,0.3)" stroke-width="1"/>
+        <path d="M8 15 L12 10 L17 20 L21 13" stroke="#4d9fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="15" cy="15" r="2" fill="#4d9fff" opacity="0.6"/>
+      </svg>
+    </div>
+    <div class="logo-wordmark">
+      <span class="brand">RehabTrack</span>
+      <span class="tagline">Motion Studio</span>
+    </div>
+  </div>
+
+  <div class="live-pill">
+    <div class="live-dot" id="liveDot"></div>
+    <span class="live-text" id="liveText">OFFLINE</span>
+  </div>
+
+  <div class="patient-chip">
+    <div class="avatar-ring" id="avatarEl">P</div>
+    <div class="patient-meta">
+      <div class="pname" id="pNameEl">Patient</div>
+      <div class="plevel" id="pLevelEl">LEVEL —</div>
+    </div>
+  </div>
+
+  <div class="topbar-actions">
+    <button class="ghost-btn" onclick="endSession()">End Session</button>
+    <button class="ghost-btn" onclick="logout()">Log Out</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="camera-section">
+    <video id="videoEl" playsinline></video>
+    <canvas id="poseCanvas"></canvas>
+
+    <div class="scanline" id="scanline"></div>
+
+    <div class="bracket bracket-tl" id="bTL"></div>
+    <div class="bracket bracket-tr" id="bTR"></div>
+    <div class="bracket bracket-bl" id="bBL"></div>
+    <div class="bracket bracket-br" id="bBR"></div>
+
+    <div id="noExOverlay">
+      <div class="camera-empty">
+        <div class="camera-empty-grid"></div>
+        <div class="crosshair crosshair-center"></div>
+        <div class="camera-empty-icon">🏃</div>
+        <h2>Select an exercise<br>to begin</h2>
+        <p>Choose from the panel on the right</p>
+      </div>
+    </div>
+
+    <div class="hud-badge">
+      <div class="exercise-label" id="exBadge">— SELECT EXERCISE —</div>
+    </div>
+
+    <div class="rep-hud">
+      <div class="rep-num" id="repNumEl">0</div>
+      <div class="rep-unit">Reps</div>
+    </div>
+
+    <div class="feedback-strip" id="feedbackStrip">
+      <span class="feedback-strip-icon" id="fbIcon">📷</span>
+      <span class="feedback-strip-text" id="fbText">Enable camera to begin tracking</span>
+    </div>
+
+    <div class="angle-hud" id="angleHud">
+      <div class="angle-label" id="angleLabel">Knee Angle</div>
+      <div class="angle-value" id="angleVal">—°</div>
+    </div>
+
+    <div class="camera-controls">
+      <button class="start-btn" id="camBtn" onclick="toggleCamera()">▶ Start Camera</button>
+    </div>
+  </div>
+
+  <div class="sidebar">
+
+    <!-- Exercise Selection -->
+    <div class="sb-block">
+      <div class="sb-label">Choose Exercise</div>
+      <div class="ex-tiles">
+        <div class="ex-tile" id="tab-squat" onclick="selectExercise('squat')">
+          <div class="tile-icon">🏋️</div>
+          <div class="tile-info">
+            <div class="tile-name">Squats</div>
+            <div class="tile-desc">Full body squat pattern</div>
+          </div>
+          <span class="tile-arrow">→</span>
+        </div>
+        <div class="ex-tile" id="tab-knee-ext" onclick="selectExercise('knee-ext')">
+          <div class="tile-icon">🦵</div>
+          <div class="tile-info">
+            <div class="tile-name">Knee Extensions</div>
+            <div class="tile-desc">Seated leg extension</div>
+          </div>
+          <span class="tile-arrow">→</span>
+        </div>
+        <div class="ex-tile" id="tab-walk" onclick="selectExercise('walk')">
+          <div class="tile-icon">🚶</div>
+          <div class="tile-info">
+            <div class="tile-name">Walking</div>
+            <div class="tile-desc">Gait analysis mode</div>
+          </div>
+          <span class="tile-arrow">→</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sb-block" id="instructBlock">
+      <div class="sb-label">Instructions</div>
+      <ul class="instruction-list" id="instructList">
+        <li><span class="step-num">1</span>Select an exercise above</li>
+        <li><span class="step-num">2</span>Start your camera</li>
+        <li><span class="step-num">3</span>Position yourself so your full body is visible</li>
+        <li><span class="step-num">4</span>Follow the on-screen feedback cues</li>
+      </ul>
+    </div>
+
+    <div class="sb-block">
+      <div class="sb-label">This Session</div>
+      <div class="stats-cluster">
+        <div class="stat-cell" id="scReps">
+          <div class="stat-val" id="stReps">0</div>
+          <div class="stat-lbl">Reps</div>
+        </div>
+        <div class="stat-cell" id="scDur">
+          <div class="stat-val mono" id="stDur">0:00</div>
+          <div class="stat-lbl">Duration</div>
+        </div>
+        <div class="stat-cell" id="scForm">
+          <div class="stat-val" id="stForm">—</div>
+          <div class="stat-lbl">Form Score</div>
+        </div>
+        <div class="stat-cell" id="scStatus">
+          <div class="stat-val" id="stStatus">—</div>
+          <div class="stat-lbl">Status</div>
+        </div>
+      </div>
+
+      <div class="form-quality">
+        <div class="form-quality-row">
+          <span class="form-quality-label">Form Quality</span>
+          <span class="form-quality-pct" id="formPct">0%</span>
+        </div>
+        <div class="form-bar-track">
+          <div class="form-bar-fill" id="formFill"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sb-block">
+      <div class="sb-label">Recent Sessions</div>
+      <div class="history-entries" id="historyList">
+        <div style="color:var(--muted2); font-size:0.8rem;">No sessions recorded yet.</div>
+      </div>
+    </div>
+
+    <div class="sb-block" style="border-bottom:none;">
+      <button class="save-btn" id="saveBtn" disabled onclick="saveSession()">
+        ✓ &nbsp;Save Session
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+const session = JSON.parse(sessionStorage.getItem('patientSession') || '{}');
+if (!session.name) {
+  // Comment out redirect for standalone demo
+  // window.location.href = 'patient-login.html';
+} else {
+  document.getElementById('pNameEl').textContent = session.name;
+  document.getElementById('pLevelEl').textContent = `LEVEL ${session.level ?? '—'}`;
+  document.getElementById('avatarEl').textContent = session.name.charAt(0).toUpperCase();
+}
+
+let currentExercise = null;
+let cameraRunning = false;
+let pose = null;
+let camera = null;
+let repCount = 0;
+let repState = 'up';
+let formScores = [];
+let sessionStart = null;
+let durationTimer = null;
+let sessionHistory = JSON.parse(localStorage.getItem(`patientHistory_${session.patientId}`) || '[]');
+
+/* ── EXERCISE CONFIG ── */
+const EXERCISES = {
+  squat: {
+    name: 'Squats',
+    angleLabel: 'Knee Angle',
+    instructions: [
+      'Stand with feet shoulder-width apart',
+      'Keep your back straight throughout',
+      'Lower until knees reach ~90° angle',
+      'Drive through heels to return to standing',
+      'Complete 3 sets of 10 reps'
+    ],
+    downAngle: 120, upAngle: 160, jointKey: 'knee',
+    cue: a => {
+      if (a > 160) return { icon:'🟢', text:'Standing — begin lowering slowly', q:'good' };
+      if (a > 120) return { icon:'🟡', text:'Going down — keep knees over toes', q:'good' };
+      if (a > 90)  return { icon:'✅', text:'Good depth! Drive back up', q:'good' };
+      return { icon:'⚠️', text:'Too deep — keep control', q:'warn' };
+    }
+  },
+  'knee-ext': {
+    name: 'Knee Extensions',
+    angleLabel: 'Knee Angle',
+    instructions: [
+      'Sit on a chair with back supported',
+      'Place a resistance band around your ankle',
+      'Slowly extend your knee to full straightness',
+      'Hold 2 seconds at the top, lower slowly',
+      'Keep movements smooth and controlled'
+    ],
+    downAngle: 90, upAngle: 170, jointKey: 'knee',
+    cue: a => {
+      if (a < 100) return { icon:'🟢', text:'Bent — extend your knee', q:'good' };
+      if (a < 150) return { icon:'🟡', text:'Extending — keep it controlled', q:'good' };
+      if (a < 175) return { icon:'✅', text:'Full extension! Great job', q:'good' };
+      return { icon:'⚠️', text:'Fully locked — lower slowly', q:'warn' };
+    }
+  },
+  walk: {
+    name: 'Walking',
+    angleLabel: 'Hip Angle',
+    instructions: [
+      'Walk in a straight line parallel to camera',
+      'Maintain normal arm swing',
+      'Focus on even step length both sides',
+      'Keep gaze forward, head upright',
+      'Walk at a comfortable, natural pace'
+    ],
+    downAngle: 140, upAngle: 170, jointKey: 'hip',
+    cue: a => {
+      if (a > 165) return { icon:'🟢', text:'Good posture — continue walking', q:'good' };
+      if (a > 150) return { icon:'🟡', text:'Slight lean — stand more upright', q:'warn' };
+      return { icon:'⚠️', text:'Forward lean detected — straighten up', q:'bad' };
+    }
+  }
+};
+
+function selectExercise(id) {
+  currentExercise = id;
+  document.querySelectorAll('.ex-tile').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${id}`).classList.add('active');
+  document.getElementById('noExOverlay').style.display = 'none';
+
+  const ex = EXERCISES[id];
+  document.getElementById('exBadge').textContent = ex.name.toUpperCase();
+  document.getElementById('angleLabel').textContent = ex.angleLabel;
+  document.getElementById('instructList').innerHTML = ex.instructions
+    .map((s,i) => `<li><span class="step-num">${i+1}</span>${s}</li>`)
+    .join('');
+
+  setFeedback('🎯', `${ex.name} selected — start camera to begin`);
+  updateHistory();
+}
+
+/* ── CAMERA ── */
+async function toggleCamera() {
+  cameraRunning ? stopCamera() : await startCamera();
+}
+
+async function startCamera() {
+  if (!currentExercise) { showToast('Select an exercise first'); return; }
+  const video = document.getElementById('videoEl');
+  try {
+    pose = new Pose({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}` });
+    pose.setOptions({ modelComplexity:1, smoothLandmarks:true, enableSegmentation:false, minDetectionConfidence:0.5, minTrackingConfidence:0.5 });
+    pose.onResults(onPoseResults);
+
+    camera = new Camera(video, {
+      onFrame: async () => { await pose.send({ image: video }); },
+      width: 1280, height: 720
+    });
+    await camera.start();
+    video.style.opacity = '0';
+    cameraRunning = true;
+
+    // UI
+    document.getElementById('camBtn').textContent = '■ Stop';
+    document.getElementById('camBtn').classList.add('stop');
+    document.getElementById('scanline').classList.add('active');
+    ['bTL','bTR','bBL','bBR'].forEach(id => document.getElementById(id).classList.add('show'));
+    document.getElementById('angleHud').classList.add('show');
+    document.getElementById('liveDot').classList.add('active');
+    document.getElementById('liveText').textContent = 'LIVE';
+    document.getElementById('stStatus').textContent = '🟢';
+    document.querySelectorAll('.stat-cell').forEach(c => c.classList.add('lit'));
+    document.getElementById('saveBtn').disabled = false;
+
+    sessionStart = Date.now(); repCount = 0; formScores = [];
+    durationTimer = setInterval(updateDuration, 1000);
+    setFeedback('📡', 'Tracking active — position yourself in frame');
+
+  } catch(err) {
+    console.error(err);
+    setFeedback('❌', 'Camera access denied');
+    showToast('Camera error: ' + err.message);
+  }
+}
+
+function stopCamera() {
+  try { if (camera?.stop) camera.stop(); } catch(e) {}
+  try { if (pose?.close) pose.close(); } catch(e) {}
+  cameraRunning = false; camera = null; pose = null;
+
+  document.getElementById('camBtn').textContent = '▶ Start Camera';
+  document.getElementById('camBtn').classList.remove('stop');
+  document.getElementById('scanline').classList.remove('active');
+  ['bTL','bTR','bBL','bBR'].forEach(id => document.getElementById(id).classList.remove('show'));
+  document.getElementById('angleHud').classList.remove('show');
+  document.getElementById('liveDot').classList.remove('active');
+  document.getElementById('liveText').textContent = 'OFFLINE';
+  document.getElementById('stStatus').textContent = '⏸';
+  document.querySelectorAll('.stat-cell').forEach(c => c.classList.remove('lit'));
+
+  if (durationTimer) { clearInterval(durationTimer); durationTimer = null; }
+
+  const canvas = document.getElementById('poseCanvas');
+  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+  setFeedback('⏸', 'Camera stopped — press Start to resume');
+}
+
+/* ── POSE ── */
+function onPoseResults(results) {
+  const canvas = document.getElementById('poseCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = results.image.width;
+  canvas.height = results.image.height;
+  ctx.save();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+  if (!results.poseLandmarks) { setFeedback('👀','Position yourself fully in frame'); return; }
+  const lm = results.poseLandmarks;
+
+  // Skeleton with neon style
+  drawConnectors(ctx, lm, POSE_CONNECTIONS, { color:'rgba(77,159,255,0.45)', lineWidth:2.5 });
+  drawLandmarks(ctx, lm, { color:'rgba(77,159,255,0.9)', fillColor:'rgba(167,139,250,0.7)', lineWidth:1, radius:3.5 });
+
+  const ex = EXERCISES[currentExercise];
+  let angle = 0;
+
+  if (currentExercise === 'squat' || currentExercise === 'knee-ext') {
+    const hip=lm[23], knee=lm[25], ankle=lm[27];
+    if (hip && knee && ankle) { angle = calcAngle(hip,knee,ankle); highlightJoint(ctx, knee, canvas.width, canvas.height, angle, ex); }
+  } else if (currentExercise === 'walk') {
+    const sh=lm[11], hip=lm[23], knee=lm[25];
+    if (sh && hip && knee) { angle = calcAngle(sh,hip,knee); highlightJoint(ctx, hip, canvas.width, canvas.height, angle, ex); }
+  }
+  ctx.restore();
+
+  document.getElementById('angleVal').textContent = Math.round(angle) + '°';
+
+  const cue = ex.cue(angle);
+  setFeedback(cue.icon, cue.text, cue.q);
+  formScores.push(cue.q === 'good' ? 100 : cue.q === 'warn' ? 65 : 40);
+  updateFormScore();
+  countReps(angle, ex);
+}
+
+function highlightJoint(ctx, lm, W, H, angle, ex) {
+  const x = lm.x*W, y = lm.y*H;
+  const good = angle >= ex.downAngle;
+  const color = good ? '#7dffa0' : '#ff4d6d';
+  ctx.beginPath();
+  ctx.arc(x,y,16,0,Math.PI*2);
+  ctx.fillStyle = color + '30';
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px Syne, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 8;
+  ctx.fillText(Math.round(angle)+'°', x, y-22);
+  ctx.shadowBlur = 0;
+}
+
+function calcAngle(a,b,c) {
+  const r = Math.atan2(c.y-b.y, c.x-b.x) - Math.atan2(a.y-b.y, a.x-b.x);
+  let angle = Math.abs(r*180/Math.PI);
+  if (angle > 180) angle = 360 - angle;
+  return angle;
+}
+
+function countReps(angle, ex) {
+  if (currentExercise === 'squat') {
+    if (angle < 120 && repState==='up') repState='down';
+    else if (angle > 155 && repState==='down') { repState='up'; bumpRep(); }
+  } else if (currentExercise === 'knee-ext') {
+    if (angle < 110 && repState==='up') repState='down';
+    else if (angle > 160 && repState==='down') { repState='up'; bumpRep(); }
+  } else if (currentExercise === 'walk') {
+    if (angle < 155 && repState==='up') repState='down';
+    else if (angle > 165 && repState==='down') { repState='up'; bumpRep(); }
+  }
+}
+
+function bumpRep() {
+  repCount++;
+  const el = document.getElementById('repNumEl');
+  el.textContent = repCount;
+  el.classList.remove('pop');
+  void el.offsetWidth;
+  el.classList.add('pop');
+  document.getElementById('stReps').textContent = repCount;
+}
+
+function updateFormScore() {
+  if (!formScores.length) return;
+  const avg = Math.round(formScores.slice(-30).reduce((a,b)=>a+b,0) / Math.min(formScores.length,30));
+  document.getElementById('stForm').textContent = avg+'%';
+  document.getElementById('formPct').textContent = avg+'%';
+  const fill = document.getElementById('formFill');
+  fill.style.width = avg+'%';
+  fill.style.background = avg>=80 ? 'var(--neon3)' : avg>=60 ? 'var(--amber)' : 'var(--rose)';
+  fill.style.boxShadow = avg>=80
+    ? '0 0 8px rgba(147,197,253,0.6)'
+    : avg>=60 ? '0 0 8px rgba(96,165,250,0.5)' : '0 0 8px rgba(255,77,109,0.4)';
+}
+
+function updateDuration() {
+  if (!sessionStart) return;
+  const s = Math.floor((Date.now()-sessionStart)/1000);
+  document.getElementById('stDur').textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+}
+
+function setFeedback(icon, text, q) {
+  document.getElementById('fbIcon').textContent = icon;
+  document.getElementById('fbText').textContent = text;
+  const strip = document.getElementById('feedbackStrip');
+  strip.className = 'feedback-strip' + (q ? ' '+q : '');
+}
+
+function saveSession() {
+  if (!currentExercise || repCount === 0) { showToast('Complete some reps first!'); return; }
+  const avg = formScores.length ? Math.round(formScores.reduce((a,b)=>a+b,0)/formScores.length) : 0;
+  const entry = {
+    date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+    exercise: EXERCISES[currentExercise].name,
+    reps: repCount,
+    formScore: avg,
+    duration: document.getElementById('stDur').textContent,
+    level: session.level
+  };
+  sessionHistory.unshift(entry);
+  if (sessionHistory.length > 10) sessionHistory = sessionHistory.slice(0,10);
+  localStorage.setItem(`patientHistory_${session.patientId}`, JSON.stringify(sessionHistory));
+  const mKey = `motionData_${session.patientId}`;
+  const md = JSON.parse(localStorage.getItem(mKey)||'[]');
+  md.unshift({...entry, timestamp:Date.now()});
+  localStorage.setItem(mKey, JSON.stringify(md.slice(0,50)));
+  updateHistory();
+  showToast('✓ Session saved');
+  document.getElementById('saveBtn').disabled = true;
+}
+
+function updateHistory() {
+  const list = document.getElementById('historyList');
+  const rel = sessionHistory.filter(h => !currentExercise || h.exercise === EXERCISES[currentExercise]?.name);
+  if (!rel.length) {
+    list.innerHTML = '<div style="color:var(--muted2);font-size:0.8rem;">No sessions recorded yet.</div>';
+    return;
+  }
+  list.innerHTML = rel.slice(0,5).map(h => {
+    const cls = h.formScore>=80 ? 'chip-good' : h.formScore>=60 ? 'chip-fair' : 'chip-poor';
+    return `<div class="history-entry">
+      <div>
+        <div class="he-reps">${h.reps} reps</div>
+        <div class="he-meta">${h.date} · ${h.duration}</div>
+      </div>
+      <span class="score-chip ${cls}">${h.formScore}%</span>
+    </div>`;
+  }).join('');
+}
+
+function endSession() {
+  try { stopCamera(); } catch(e) {}
+  showToast('Session ended — great work!');
+  setTimeout(() => { window.location.href = 'patient-login.html'; }, 1500);
+}
+function logout() {
+  try { stopCamera(); } catch(e) {}
+  sessionStorage.removeItem('patientSession');
+  window.location.href = 'patient-login.html';
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.getElementById('toastWrap').appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+updateHistory();
+</script>
+</body>
+</html>
