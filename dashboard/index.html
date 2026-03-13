@@ -3,9 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ACL Rehab Dashboard - Therapist Portal</title>
+  <title>KneeSense - Therapist Dashboard</title>
 
   <style>
+    /* Auth guard overlay — hides the page until Firebase confirms the user */
+    #authGuard {
+      position: fixed; inset: 0;
+      background: #f5f7fa;
+      z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 14px;
+    }
+    #authGuard .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #authGuard p {
+      font-family: "Segoe UI", sans-serif;
+      color: #6b7280; font-size: .9rem;
+    }
+
     :root{
       --primary-blue:#2563eb;
       --primary-blue-700:#1d4ed8;
@@ -265,17 +286,24 @@
 </head>
 
 <body>
+
+  <!-- Auth guard — removed once Firebase confirms login -->
+  <div id="authGuard">
+    <div class="spinner"></div>
+    <p>Verifying session…</p>
+  </div>
+
   <!-- PATIENT LIST -->
-  <div id="patients" class="container">
+  <div id="patients" class="container hidden">
     <div class="top-bar">
       <div class="header-title">
         <h1>Patient Management</h1>
-        <span class="clinic-badge">Sports Medicine Clinic</span>
+        <span class="clinic-badge">KneeSense™ Portal</span>
       </div>
       <div class="user-info">
         <div class="user-avatar" id="userInitial" aria-hidden="true">T</div>
         <div>
-          <div style="font-weight: 800;">Dr. Therapist</div>
+          <div style="font-weight: 800;" id="userDisplayName">Dr. Therapist</div>
           <div style="font-size: 0.85rem; color: var(--text-light); font-weight: 700;">Physiotherapist</div>
         </div>
         <button class="icon-btn" onclick="openAddPatientModal()">+ Add Patient</button>
@@ -475,12 +503,52 @@
   </div>
 </div>
 
-
   <!-- Toast -->
   <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
   <!-- Chart.js CDN for raw signal plotting -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Firebase Auth Guard -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut }
+        from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    // ── Fetch config from Python backend ─────────────────────────────────
+    let auth;
+    try {
+        const res = await fetch('/firebase-config');
+        if (!res.ok) throw new Error('Config fetch failed');
+        const firebaseConfig = await res.json();
+        const app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+    } catch (e) {
+        document.getElementById('authGuard').innerHTML =
+            '<p style="color:#dc2626;padding:20px;text-align:center;">⚠️ Could not load app config.<br>Make sure the backend is running.</p>';
+        throw e;
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        window.location.href = "login.html";
+        return;
+      }
+
+      document.getElementById('authGuard').remove();
+      document.getElementById('patients').classList.remove('hidden');
+
+      const name = user.displayName || user.email || 'Therapist';
+      document.getElementById('userDisplayName').textContent = name;
+      document.getElementById('userInitial').textContent = name[0].toUpperCase();
+
+      // Initialize dashboard now that auth is confirmed
+      init();
+    });
+
+    window.firebaseSignOut = () => signOut(auth);
+  </script>
 
   <script>
   // -------------------------
@@ -604,16 +672,16 @@ function addPatient(){
     status,
     injuryDate: new Date().toISOString().slice(0,10),
     lastSession: new Date().toISOString().slice(0,10),
-    overallProgress: 50,
+    overallProgress: 0,
     exercises: level === 1 ? [
-      { id: Date.now()+1, name: "Knee Extensions", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 85, description: "Quadriceps strengthening" }
+      { id: Date.now()+1, name: "Knee Extensions", success: 0, kneeROM: 0, emgSymmetry: 0, sessions: 0, target: 85, description: "Quadriceps strengthening" }
     ] : level === 2 ? [
-      { id: Date.now()+1, name: "Knee Extensions", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 85, description: "Quadriceps strengthening" },
-      { id: Date.now()+2, name: "Squats", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 95, description: "Lower body strength" }
+      { id: Date.now()+1, name: "Knee Extensions", success: 0, kneeROM: 0, emgSymmetry: 0, sessions: 0, target: 85, description: "Quadriceps strengthening" },
+      { id: Date.now()+2, name: "Squats", success: 0, kneeROM: 0, emgSymmetry: 0, sessions: 0, target: 95, description: "Lower body strength" }
     ] : [
-      { id: Date.now()+1, name: "Knee Extensions", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 85, description: "Quadriceps strengthening" },
-      { id: Date.now()+2, name: "Squats", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 95, description: "Lower body strength" },
-      { id: Date.now()+3, name: "Walking", success: 50, kneeROM: 60, emgSymmetry: 0.75, sessions: 0, target: 95, description: "Gait rehabilitation" }
+      { id: Date.now()+1, name: "Knee Extensions", success: 0, kneeROM: 0, emgSymmetry: 0, sessions: 0, target: 85, description: "Quadriceps strengthening" },
+      { id: Date.now()+2, name: "Squats", success: 0, kneeROM: 0, emgSymmetry: 0, sessions: 0, target: 95, description: "Lower body strength" },
+      { id: Date.now()+3, name: "Walking", success: 0, kneeROM: 0, emgSymmetry: 0, sessions: 0, target: 95, description: "Gait rehabilitation" }
     ]
   };
 
@@ -633,7 +701,6 @@ function removePatient(patientId){
 
   patients = patients.filter(x => x.id !== patientId);
 
-  // remove saved notes for that patient too
   try{
     const notesData = JSON.parse(localStorage.getItem(NOTES_KEY) || '{}');
     delete notesData[patientId];
@@ -643,7 +710,6 @@ function removePatient(patientId){
   saveToStorage();
   showToast(`Removed ${p.name}`, 'warning');
 
-  // if you were viewing them, go back
   if(selectedPatient && selectedPatient.id === patientId){
     selectedPatient = null;
     goBack();
@@ -653,7 +719,6 @@ function removePatient(patientId){
   }
 }
 
-
   // -------------------------
   // INITIALIZATION
   // -------------------------
@@ -661,16 +726,7 @@ function removePatient(patientId){
     loadFromStorage();
     updateStats();
     loadPatients();
-    setUserInitial();
     showToast('Welcome to ACL Rehab Dashboard!', 'success');
-  }
-
-  window.onload = init;
-
-  function setUserInitial(){
-    const el = document.getElementById('userInitial');
-    const name = 'Dr. Therapist';
-    el.textContent = (name.trim()[0] || 'T').toUpperCase();
   }
 
   function loadFromStorage(){
@@ -680,93 +736,49 @@ function removePatient(patientId){
         const parsed = JSON.parse(saved);
         if(Array.isArray(parsed)){
           patients = parsed;
-          if(patients.length === 0){
-            // Load sample if empty
-            patients = [
-              {
-                id: 1,
-                name: "Patient 1",
-                age: 28,
-                level: 1,
-                status: "active",
-                injuryDate: "2024-01-15",
-                lastSession: "2024-03-10",
-                overallProgress: 75,
-                exercises: [
-                  { id: 101, name: "Knee Extensions", success: 75, kneeROM: 65, emgSymmetry: 0.82, sessions: 5, target: 85, description: "Quadriceps strengthening exercise" }
-                ]
-              },
-              {
-                id: 2,
-                name: "Patient 2",
-                age: 32,
-                level: 2,
-                status: "active",
-                injuryDate: "2024-02-20",
-                lastSession: "2024-03-05",
-                overallProgress: 85,
-                exercises: [
-                  { id: 201, name: "Knee Extensions", success: 80, kneeROM: 68, emgSymmetry: 0.85, sessions: 6, target: 85, description: "Quadriceps strengthening exercise" },
-                  { id: 202, name: "Squats", success: 90, kneeROM: 72, emgSymmetry: 0.92, sessions: 8, target: 95, description: "Lower body strengthening" }
-                ]
-              }
-            ];
-            saveToStorage();
-          }
+          if(patients.length === 0) loadSamplePatients();
         }
       } else {
-        // Load sample
-        patients = [
-          {
-            id: 1,
-            name: "Patient 1",
-            age: 28,
-            level: 1,
-            status: "active",
-            injuryDate: "2024-01-15",
-            lastSession: "2024-03-10",
-            overallProgress: 75,
-            exercises: [
-              { id: 101, name: "Knee Extensions", success: 75, kneeROM: 65, emgSymmetry: 0.82, sessions: 5, target: 85, description: "Quadriceps strengthening exercise" }
-            ]
-          },
-          {
-            id: 2,
-            name: "Patient 2",
-            age: 32,
-            level: 2,
-            status: "active",
-            injuryDate: "2024-02-20",
-            lastSession: "2024-03-05",
-            overallProgress: 85,
-            exercises: [
-              { id: 201, name: "Knee Extensions", success: 80, kneeROM: 68, emgSymmetry: 0.85, sessions: 6, target: 85, description: "Quadriceps strengthening exercise" },
-              { id: 202, name: "Squats", success: 90, kneeROM: 72, emgSymmetry: 0.92, sessions: 8, target: 95, description: "Lower body strengthening" }
-            ]
-          }
-        ];
-        saveToStorage();
+        loadSamplePatients();
       }
     } catch(e) { 
       console.error(e); 
       showToast('Error loading patients', 'error'); 
-      // Fallback to sample
-      patients = [
-        {
-          id: 1,
-          name: "Patient 1",
-          age: 28,
-          level: 1,
-          status: "active",
-          injuryDate: "2024-01-15",
-          lastSession: "2024-03-10",
-          overallProgress: 75,
-          exercises: [
-            { id: 101, name: "Knee Extensions", success: 75, kneeROM: 65, emgSymmetry: 0.82, sessions: 5, target: 85, description: "Quadriceps strengthening exercise" }
-          ]
-        }
-      ];
+      loadSamplePatients();
     }
+  }
+
+  function loadSamplePatients(){
+    patients = [
+      {
+        id: 1,
+        name: "Patient 1",
+        age: 28,
+        level: 1,
+        status: "active",
+        injuryDate: "2024-01-15",
+        lastSession: "2024-03-10",
+        overallProgress: 75,
+        exercises: [
+          { id: 101, name: "Knee Extensions", success: 75, kneeROM: 65, emgSymmetry: 0.82, sessions: 5, target: 85, description: "Quadriceps strengthening exercise" }
+        ]
+      },
+      {
+        id: 2,
+        name: "Patient 2",
+        age: 32,
+        level: 2,
+        status: "active",
+        injuryDate: "2024-02-20",
+        lastSession: "2024-03-05",
+        overallProgress: 85,
+        exercises: [
+          { id: 201, name: "Knee Extensions", success: 80, kneeROM: 68, emgSymmetry: 0.85, sessions: 6, target: 85, description: "Quadriceps strengthening exercise" },
+          { id: 202, name: "Squats", success: 90, kneeROM: 72, emgSymmetry: 0.92, sessions: 8, target: 95, description: "Lower body strengthening" }
+        ]
+      }
+    ];
+    saveToStorage();
   }
 
   function saveToStorage(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(patients)); }
@@ -774,9 +786,9 @@ function removePatient(patientId){
   // -------------------------
   // LOGIN / LOGOUT
   // -------------------------
-  function logout(){
+  async function logout(){
     if(confirm('Are you sure you want to logout?')){
-      localStorage.removeItem('lastLogin');
+      if(typeof window.firebaseSignOut === 'function') await window.firebaseSignOut();
       window.location.href = "login.html";
     }
   }
@@ -798,8 +810,11 @@ function removePatient(patientId){
         return;
       }
 
-      // Sort: active first, then higher progress
+      // Sort: recently edited first, then active, then progress
       const sorted = [...filteredPatients].sort((a,b) => {
+        if(b.lastEdited && a.lastEdited) return b.lastEdited - a.lastEdited;
+        if(b.lastEdited) return 1;
+        if(a.lastEdited) return -1;
         const sa = a.status === 'active' ? 0 : a.status === 'pending' ? 1 : 2;
         const sb = b.status === 'active' ? 0 : b.status === 'pending' ? 1 : 2;
         if(sa !== sb) return sa - sb;
@@ -852,9 +867,14 @@ function removePatient(patientId){
             <span class="value">${formatDate(p.lastSession)}</span>
           </div>
 
-          <button onclick="event.stopPropagation(); openPatient(${p.id})" style="margin-top: 14px; width:100%;">
-            View Progress
-          </button>
+          <div style="display:flex; gap:8px; margin-top:14px;">
+            <button onclick="event.stopPropagation(); openPatient(${p.id})" style="flex:1;">
+              View Progress
+            </button>
+            <button onclick="event.stopPropagation(); startTrial(${p.id})" style="flex:1; background:linear-gradient(135deg,#2563eb,#0d7e8a);">
+              ▶ Start Trial
+            </button>
+          </div>
         `;
         list.appendChild(div);
       });
@@ -902,9 +922,7 @@ function removePatient(patientId){
 
       document.getElementById("currentLevel").innerText = selectedPatient.level;
 
-      // progress visuals
       setOverallProgress(selectedPatient.overallProgress);
-
       updateLevelIndicator();
 
       const advanceBtn = document.getElementById('advanceBtn');
@@ -915,7 +933,6 @@ function removePatient(patientId){
       const resetBtn = document.getElementById('resetBtn');
       resetBtn.disabled = selectedPatient.level <= 1;
 
-      // Exercises
       const exList = document.getElementById("exerciseList");
       exList.innerHTML = "";
 
@@ -960,10 +977,24 @@ function removePatient(patientId){
             <span class="value ${emgClass}">${Number(ex.emgSymmetry).toFixed(2)}</span>
           </div>
 
-          <div style="margin-top: 14px; display:flex; gap:10px; flex-wrap:wrap;">
-            <button onclick="updateExercise(${ex.id}, 'increase')" style="flex:1;">+ Improve</button>
-            <button onclick="updateExercise(${ex.id}, 'decrease')" class="secondary" style="flex:1;">- Needs Work</button>
+          <div style="margin:14px 0 6px;">
+            <div style="display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:6px;">
+              <span style="color:var(--text-light);font-weight:700;">Adjust Score</span>
+              <span id="slider-val-${ex.id}" style="font-weight:900;color:var(--primary-blue);">${ex.success}%</span>
+            </div>
+            <input type="range" min="0" max="100" step="10" value="${ex.success}"
+              style="width:100%;accent-color:var(--primary-blue);cursor:pointer;"
+              oninput="updateExerciseSlider(${ex.id}, this.value)"
+              onchange="openPatient(selectedPatient.id)">
+          </div>
+
+          <div style="margin-top: 10px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button onclick="updateExercise(${ex.id}, 'increase')" style="flex:1;">+10% Improve</button>
+            <button onclick="updateExercise(${ex.id}, 'decrease')" class="secondary" style="flex:1;">-10% Needs Work</button>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:8px;">
             <button onclick="viewRawData(${ex.id})" class="ghost" style="flex:1;">View Raw Data</button>
+            <button onclick="startExercise(${ex.id})" style="flex:1;background:linear-gradient(135deg,#2563eb,#0d7e8a);">▶ Start Exercise</button>
           </div>
         `;
         exList.appendChild(div);
@@ -977,7 +1008,6 @@ function removePatient(patientId){
       document.getElementById("overallProgress").innerText = clamped + '%';
       document.getElementById("overallProgressBar").style.width = clamped + '%';
 
-      // color overall bar based on threshold
       const bar = document.getElementById("overallProgressBar");
       bar.classList.remove('good','fair','poor');
       bar.classList.add(clamped >= 80 ? 'good' : clamped >= 60 ? 'fair' : 'poor');
@@ -997,18 +1027,41 @@ function removePatient(patientId){
       const exercise = patient.exercises.find(ex => ex.id === exerciseId);
       if(!exercise) return;
 
-      const change = action === 'increase' ? 5 : -5;
+      const change = action === 'increase' ? 10 : -10;
       exercise.success = clamp(exercise.success + change, 0, 100);
 
       if(action === 'increase') exercise.sessions += 1;
 
-      // Recalculate overall progress (avg success)
       const totalSuccess = patient.exercises.reduce((sum, ex) => sum + (Number(ex.success) || 0), 0);
       patient.overallProgress = Math.round(totalSuccess / patient.exercises.length);
+      patient.lastEdited = Date.now();
+      patient.lastSession = new Date().toISOString().slice(0,10);
 
       saveToStorage();
       openPatient(selectedPatient.id);
       showToast(`${action === 'increase' ? 'Improved' : 'Adjusted'} ${exercise.name}`, 'info');
+    }
+
+    function updateExerciseSlider(exerciseId, value){
+      const patient = patients.find(p => p.id === selectedPatient.id);
+      if(!patient) return;
+      const exercise = patient.exercises.find(ex => ex.id === exerciseId);
+      if(!exercise) return;
+      exercise.success = Number(value);
+      const totalSuccess = patient.exercises.reduce((sum, ex) => sum + (Number(ex.success) || 0), 0);
+      patient.overallProgress = Math.round(totalSuccess / patient.exercises.length);
+      patient.lastEdited = Date.now();
+      patient.lastSession = new Date().toISOString().slice(0,10);
+      // Update display without full re-render
+      document.getElementById(`slider-val-${exerciseId}`).textContent = value + '%';
+      document.getElementById(`progress-bar-ex-${exerciseId}`)?.style && (document.getElementById(`progress-bar-ex-${exerciseId}`).style.width = value + '%');
+      saveToStorage();
+    }
+
+    function startExercise(exerciseId){
+      localStorage.setItem('trialPatientId', selectedPatient.id);
+      localStorage.setItem('trialExerciseId', exerciseId);
+      window.location.href = 'exercise.html';
     }
 
     function advanceLevel(){
@@ -1016,7 +1069,6 @@ function removePatient(patientId){
 
       selectedPatient.level++;
 
-      // Add new exercise for the level
       if(selectedPatient.level === 2){
         selectedPatient.exercises.push({
           id: Date.now(),
@@ -1041,7 +1093,6 @@ function removePatient(patientId){
         });
       }
 
-      // Recalculate overall progress as average
       const totalSuccess = selectedPatient.exercises.reduce((sum, ex) => sum + (Number(ex.success) || 0), 0);
       selectedPatient.overallProgress = Math.round(totalSuccess / selectedPatient.exercises.length);
 
@@ -1056,7 +1107,6 @@ function removePatient(patientId){
       selectedPatient.level = 1;
       selectedPatient.overallProgress = 50;
 
-      // Reset to only Knee Extensions
       selectedPatient.exercises = [{
         id: Date.now(),
         name: "Knee Extensions",
@@ -1081,9 +1131,7 @@ function removePatient(patientId){
         const notesData = JSON.parse(localStorage.getItem(NOTES_KEY) || '{}');
         const note = notesData[selectedPatient.id];
         document.getElementById('progressNotes').value = note || '';
-      }catch(e){
-        console.error('Failed to load notes:', e);
-      }
+      }catch(e){ console.error('Failed to load notes:', e); }
     }
 
     function saveNotes(){
@@ -1124,58 +1172,10 @@ function removePatient(patientId){
     function updateStats(filteredPatients = patients){
       const total = filteredPatients.length;
       const active = filteredPatients.filter(p => p.status === 'active').length;
-  
 
       document.getElementById('totalPatients').textContent = total;
       document.getElementById('activeSessions').textContent = active;
-      document.getElementById('weekSessions').textContent = total * 2; // mock metric
-    }
-
-    // -------------------------
-    // UTILITIES
-    // -------------------------
-    function formatDate(dateString){
-      const date = new Date(dateString);
-      if(Number.isNaN(date.getTime())) return '—';
-      return date.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-    }
-
-    function clamp(n, min, max){
-      const x = Number(n);
-      if(Number.isNaN(x)) return min;
-      return Math.max(min, Math.min(max, x));
-    }
-
-    // Basic HTML escaping for any dynamic string inserted via innerHTML
-    function escapeHTML(str){
-      return String(str ?? '')
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'",'&#039;');
-    }
-
-    function showToast(message, type='info'){
-      const container = document.getElementById('toastContainer');
-      const toast = document.createElement('div');
-      toast.className = 'toast';
-
-      toast.style.background =
-        type === 'error' ? 'var(--error-red)' :
-        type === 'success' ? 'var(--success-green)' :
-        type === 'warning' ? 'var(--warning-orange)' :
-        'var(--text-dark)';
-
-      const icon =
-        type === 'error' ? '❌' :
-        type === 'success' ? '✅' :
-        type === 'warning' ? '⚠️' : 'ℹ️';
-
-      toast.textContent = `${icon} ${message}`;
-      container.appendChild(toast);
-
-      setTimeout(() => toast.remove(), 2800);
+      document.getElementById('weekSessions').textContent = total * 2;
     }
 
     function goBack(){
@@ -1195,10 +1195,7 @@ function removePatient(patientId){
 
       document.getElementById("rawExerciseTitle").innerText = `Raw Data - ${exercise.name}`;
 
-      // Load signal data
       loadSignalData(exercise);
-
-      // Load CSV data
       loadCSVData(exercise);
     }
 
@@ -1215,21 +1212,21 @@ function removePatient(patientId){
     }
 
     function loadSignalData(exercise){
-      if(signalChart) signalChart.destroy(); // Destroy previous chart
+      if(signalChart) signalChart.destroy();
       const ctx = document.getElementById('signalChart').getContext('2d');
       const data = fakeRawData[selectedPatient.id]?.[exercise.name];
+
+      let chartData;
       if(!data) {
-        // Fallback mock data
-        const time = [];
-        const amplitude = [];
+        const time = [], amplitude = [];
         for(let i = 0; i < 100; i++){
           time.push(i * 0.01);
           amplitude.push(Math.sin(i * 0.1) + Math.random() * 0.5);
         }
-        var chartData = { labels: time, datasets: [{ label: 'EMG Amplitude', data: amplitude, borderColor: 'var(--primary-blue)', backgroundColor: 'rgba(37, 99, 235, 0.1)', fill: true }] };
+        chartData = { labels: time, datasets: [{ label: 'EMG Amplitude', data: amplitude, borderColor: 'var(--primary-blue)', backgroundColor: 'rgba(37, 99, 235, 0.1)', fill: true }] };
       } else {
         const time = Array.from({length: data.signal.length}, (_, i) => (i * 0.01).toFixed(2));
-        var chartData = { labels: time, datasets: [{ label: 'EMG Amplitude', data: data.signal, borderColor: 'var(--primary-blue)', backgroundColor: 'rgba(37, 99, 235, 0.1)', fill: true }] };
+        chartData = { labels: time, datasets: [{ label: 'EMG Amplitude', data: data.signal, borderColor: 'var(--primary-blue)', backgroundColor: 'rgba(37, 99, 235, 0.1)', fill: true }] };
       }
 
       signalChart = new Chart(ctx, {
@@ -1250,28 +1247,18 @@ function removePatient(patientId){
       tbody.innerHTML = '';
 
       const data = fakeRawData[selectedPatient.id]?.[exercise.name]?.csv;
-      if(!data) {
-        // Fallback mock data
-        var csvData = Array.from({length: 50}, (_, i) => ({
-          time: (i * 0.02).toFixed(2),
-          emg: (Math.sin(i * 0.1) + Math.random() * 0.5).toFixed(3),
-          rom: (60 + Math.random() * 20).toFixed(1)
-        }));
-      } else {
-        var csvData = data;
-      }
+      const csvData = data || Array.from({length: 50}, (_, i) => ({
+        time: (i * 0.02).toFixed(2),
+        emg: (Math.sin(i * 0.1) + Math.random() * 0.5).toFixed(3),
+        rom: (60 + Math.random() * 20).toFixed(1)
+      }));
 
       csvData.forEach(row => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${row.time}</td>
-          <td>${row.emg}</td>
-          <td>${row.rom}</td>
-        `;
+        tr.innerHTML = `<td>${row.time}</td><td>${row.emg}</td><td>${row.rom}</td>`;
         tbody.appendChild(tr);
       });
 
-      // Add download button if not exists
       if(!document.getElementById('downloadCSVBtn')){
         const downloadBtn = document.createElement('button');
         downloadBtn.id = 'downloadCSVBtn';
@@ -1292,10 +1279,7 @@ function removePatient(patientId){
       URL.revokeObjectURL(url);
     }
 
-    // INITIALIZE
-    document.addEventListener('DOMContentLoaded', init);
-
-    
+    // init() is called by the Firebase auth guard after confirming the user session
   </script>
 </body>
 </html>

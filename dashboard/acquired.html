@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KneeSense — Acquired Data</title>
+  <style>
+    :root{
+      --primary-blue:#2563eb;--primary-blue-700:#1d4ed8;--secondary-gray:#6b7280;
+      --success-green:#22c55e;--warning-orange:#f59e0b;--error-red:#ef4444;
+      --background-light:#f5f7fa;--card-white:#ffffff;--text-dark:#111827;
+      --text-light:#6b7280;--border-color:#e5e7eb;
+      --shadow-sm:0 2px 8px rgba(0,0,0,.06);--shadow-md:0 8px 24px rgba(0,0,0,.10);--radius:12px;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Arial,sans-serif;background:var(--background-light);color:var(--text-dark);line-height:1.6;min-height:100vh;}
+    .container{max-width:1200px;margin:0 auto;padding:28px}
+    .top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;flex-wrap:wrap;gap:14px;}
+    .header-title{display:flex;align-items:center;gap:12px}
+    .header-title h1{font-size:1.8rem;letter-spacing:-.01em}
+    .clinic-badge{background:var(--primary-blue);color:#fff;padding:4px 12px;border-radius:999px;font-size:.8rem;font-weight:600;}
+    button{padding:10px 16px;border:1px solid transparent;border-radius:10px;background:var(--primary-blue);color:#fff;cursor:pointer;font-size:14px;font-weight:700;transition:transform .18s,box-shadow .18s,background .18s;}
+    button:hover:not(:disabled){background:var(--primary-blue-700);transform:translateY(-1px);box-shadow:0 10px 18px rgba(37,99,235,.18);}
+    button.secondary{background:var(--secondary-gray)}
+    button.secondary:hover:not(:disabled){background:#4b5563}
+    button.ghost{background:transparent;border-color:var(--border-color);color:var(--text-dark);}
+    button.ghost:hover:not(:disabled){background:#fff;border-color:#d1d5db;box-shadow:var(--shadow-sm);}
+    button.icon-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 14px}
+    .card{background:var(--card-white);border-radius:var(--radius);padding:18px;margin-bottom:18px;box-shadow:var(--shadow-sm);border:1px solid var(--border-color);}
+
+    /* Stats row */
+    .stats-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px;}
+    .stat-card{background:var(--card-white);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow-sm);border:1px solid var(--border-color);text-align:center;}
+    .stat-value{font-size:1.6rem;font-weight:950;color:var(--primary-blue);margin:6px 0;}
+    .stat-label{color:var(--text-light);font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;}
+
+    /* Tabs */
+    .tab-row{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+    .tab-row button{background:transparent;border-color:var(--border-color);color:var(--text-dark);}
+    .tab-row button.active{background:var(--primary-blue);color:#fff;border-color:var(--primary-blue);}
+    .tab-row button:hover:not(.active):not(:disabled){background:#fff;border-color:#d1d5db;}
+
+    /* Chart grid */
+    .chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:18px;margin-bottom:18px;}
+    .chart-card{background:var(--card-white);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-sm);border:1px solid var(--border-color);}
+    .chart-card h3{font-size:.78rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-light);font-weight:700;margin-bottom:12px;}
+
+    /* Upload zone */
+    .upload-zone{background:var(--card-white);border:2px dashed var(--border-color);border-radius:var(--radius);padding:28px;text-align:center;margin-bottom:22px;transition:border-color .2s,background .2s;cursor:pointer;}
+    .upload-zone:hover{border-color:var(--primary-blue);background:#eff6ff;}
+    .upload-zone input{display:none;}
+    .upload-icon{font-size:2rem;margin-bottom:8px;}
+    .upload-text{font-weight:700;color:var(--primary-blue);font-size:.95rem;}
+    .upload-sub{font-size:.82rem;color:var(--text-light);margin-top:4px;}
+
+    /* Table */
+    .table-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+    .table-scroll{overflow-x:auto;max-height:400px;overflow-y:auto;border:1px solid var(--border-color);border-radius:10px;}
+    table{width:100%;border-collapse:collapse;font-size:.8rem;white-space:nowrap;}
+    thead tr{background:var(--background-light);position:sticky;top:0;z-index:1;}
+    th{padding:10px 14px;text-align:left;color:var(--text-light);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--border-color);}
+    td{padding:8px 14px;border-bottom:1px solid #f3f4f6;color:var(--text-dark);}
+    tr:hover td{background:#f9fafb;}
+
+    .hidden{display:none!important;}
+    .toast{position:fixed;bottom:20px;right:20px;background:var(--text-dark);color:#fff;padding:14px 16px;border-radius:12px;box-shadow:0 10px 22px rgba(0,0,0,.18);z-index:1000;animation:slideIn .25s ease;}
+    @keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+    @media(max-width:768px){.container{padding:18px}.chart-grid{grid-template-columns:1fr}.top-bar{flex-direction:column;align-items:flex-start}}
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="top-bar">
+    <div class="header-title">
+      <h1>Acquired Data</h1>
+      <span class="clinic-badge" id="dataBadge">Sample Data</span>
+    </div>
+    <button class="secondary icon-btn" onclick="window.location.href='exercise.html'">← Back to Exercise</button>
+  </div>
+
+  <!-- Upload zone -->
+  <label class="upload-zone">
+    <input type="file" accept=".csv" onchange="handleUpload(event)">
+    <div class="upload-icon">📁</div>
+    <div class="upload-text">Upload CSV from ESP32</div>
+    <div class="upload-sub">Click to upload — replaces current sample data</div>
+  </label>
+
+  <!-- Stats -->
+  <div class="stats-summary" id="statsRow"></div>
+
+  <!-- Tabs -->
+  <div class="tab-row">
+    <button class="active" onclick="showTab('charts',this)">📈 Signal Charts</button>
+    <button onclick="showTab('angles',this)">📐 Joint Angles</button>
+    <button onclick="showTab('imu',this)">🔄 IMU Data</button>
+    <button onclick="showTab('table',this)">📋 Raw Table</button>
+  </div>
+
+  <!-- Charts tab -->
+  <div id="tab-charts">
+    <div class="chart-grid">
+      <div class="chart-card"><h3>EMG Signals (mV)</h3><canvas id="emgChart" height="130"></canvas></div>
+      <div class="chart-card"><h3>Joint Angles (°)</h3><canvas id="angleChart" height="130"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Angles tab -->
+  <div id="tab-angles" class="hidden">
+    <div class="chart-grid">
+      <div class="chart-card"><h3>Quad Pitch & Roll (°)</h3><canvas id="quadAngleChart" height="140"></canvas></div>
+      <div class="chart-card"><h3>Ham Pitch & Roll (°)</h3><canvas id="hamAngleChart" height="140"></canvas></div>
+      <div class="chart-card"><h3>Calf Pitch & Roll (°)</h3><canvas id="calfAngleChart" height="140"></canvas></div>
+    </div>
+  </div>
+
+  <!-- IMU tab -->
+  <div id="tab-imu" class="hidden">
+    <div class="chart-grid">
+      <div class="chart-card"><h3>Quad Accelerometer (g)</h3><canvas id="accQuadChart" height="140"></canvas></div>
+      <div class="chart-card"><h3>Ham Accelerometer (g)</h3><canvas id="accHamChart" height="140"></canvas></div>
+      <div class="chart-card"><h3>Calf Accelerometer (g)</h3><canvas id="accCalfChart" height="140"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Table tab -->
+  <div id="tab-table" class="hidden">
+    <div class="card">
+      <div class="table-header">
+        <h3>Raw CSV Data (<span id="rowCount">0</span> rows)</h3>
+        <button onclick="downloadCSV()">⬇ Download CSV</button>
+      </div>
+      <div class="table-scroll">
+        <table><thead id="tableHead"></thead><tbody id="tableBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  let csvData = JSON.parse(localStorage.getItem('acquiredData') || 'null');
+  if(!csvData) csvData = makeMock();
+
+  function makeMock(){
+    return Array.from({length:169},(_,i)=>({
+      timestamp_ms:i*15,
+      EMG_Quad_mV:(Math.sin(i*.18)*180+Math.random()*60+20).toFixed(2),
+      EMG_Ham_mV: (Math.cos(i*.14)*120+Math.random()*40+10).toFixed(2),
+      EMG_Calf_mV:(Math.sin(i*.22)*90+Math.random()*30+5).toFixed(2),
+      ACC_Quad_X_g:(0.19+Math.random()*.02).toFixed(4),ACC_Quad_Y_g:(0.18+Math.random()*.02).toFixed(4),ACC_Quad_Z_g:(0.96+Math.random()*.02).toFixed(4),
+      GYR_Quad_X_dps:(Math.random()*.6-.3).toFixed(3),GYR_Quad_Y_dps:(Math.random()*.6-.3).toFixed(3),GYR_Quad_Z_dps:(1+Math.random()*.3).toFixed(3),
+      Pitch_Quad_deg:(-11+Math.random()*2).toFixed(2),Roll_Quad_deg:(10.5+Math.random()).toFixed(2),
+      ACC_Ham_X_g:(0.33+Math.random()*.02).toFixed(4),ACC_Ham_Y_g:(-0.31+Math.random()*.02).toFixed(4),ACC_Ham_Z_g:(-0.94+Math.random()*.02).toFixed(4),
+      GYR_Ham_X_dps:(Math.random()*.6-.3).toFixed(3),GYR_Ham_Y_dps:(Math.random()*.4-.2).toFixed(3),GYR_Ham_Z_dps:(Math.random()*.6-.3).toFixed(3),
+      Pitch_Ham_deg:(-18.8+Math.random()*.1).toFixed(2),Roll_Ham_deg:(-161.6+Math.random()*.1).toFixed(2),
+      ACC_Calf_X_g:(-0.61+Math.random()*.02).toFixed(4),ACC_Calf_Y_g:(0.76+Math.random()*.02).toFixed(4),ACC_Calf_Z_g:(-0.20+Math.random()*.02).toFixed(4),
+      GYR_Calf_X_dps:(Math.random()*2-1).toFixed(3),GYR_Calf_Y_dps:(Math.random()*2-1).toFixed(3),GYR_Calf_Z_dps:(Math.random()*2-1).toFixed(3),
+      Pitch_Calf_deg:(37.7+Math.random()*.1).toFixed(2),Roll_Calf_deg:(104.7+Math.random()*.1).toFixed(2),
+      Angle_Quad_Ham_deg:(Math.sin(i*.12)*25+45+Math.random()*5).toFixed(2),
+      Angle_Quad_Calf_deg:(Math.cos(i*.1)*20+80+Math.random()*4).toFixed(2),
+      Angle_Ham_Calf_deg:(Math.sin(i*.09)*15+35+Math.random()*3).toFixed(2),
+    }));
+  }
+
+  const cols = Object.keys(csvData[0]);
+  const get = col => csvData.map(r=>parseFloat(r[col]||0));
+  const labels = csvData.map(r=>r.timestamp_ms);
+
+  // Stats
+  const rms = arr => Math.sqrt(arr.reduce((a,b)=>a+b*b,0)/arr.length);
+  const statsData = [
+    {label:'EMG Quad RMS', val:rms(get('EMG_Quad_mV')).toFixed(1)+' mV'},
+    {label:'EMG Ham RMS',  val:rms(get('EMG_Ham_mV')).toFixed(1)+' mV'},
+    {label:'EMG Calf RMS', val:rms(get('EMG_Calf_mV')).toFixed(1)+' mV'},
+    {label:'Max Knee Angle',val:Math.max(...get('Angle_Quad_Ham_deg')).toFixed(1)+'°'},
+    {label:'Min Knee Angle',val:Math.min(...get('Angle_Quad_Ham_deg')).toFixed(1)+'°'},
+    {label:'Duration',      val:(labels[labels.length-1]/1000).toFixed(1)+' s'},
+  ];
+  const sr = document.getElementById('statsRow');
+  statsData.forEach(s=>{
+    sr.innerHTML+=`<div class="stat-card"><div class="stat-label">${s.label}</div><div class="stat-value">${s.val}</div></div>`;
+  });
+
+  // Charts
+  function mkChart(id, datasets, yLabel=''){
+    return new Chart(document.getElementById(id).getContext('2d'),{
+      type:'line', data:{labels, datasets},
+      options:{animation:false,responsive:true,
+        plugins:{legend:{labels:{color:'#6b7280',font:{size:11}}}},
+        scales:{
+          x:{ticks:{color:'#6b7280',maxTicksLimit:8},grid:{color:'#e5e7eb'},title:{display:true,text:'Time (ms)',color:'#6b7280'}},
+          y:{ticks:{color:'#6b7280'},grid:{color:'#e5e7eb'},title:{display:!!yLabel,text:yLabel,color:'#6b7280'}}
+        }
+      }
+    });
+  }
+  function ds(label,data,color){return{label,data,borderColor:color,backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3};}
+
+  mkChart('emgChart',  [ds('EMG Quad',get('EMG_Quad_mV'),'#2563eb'),ds('EMG Ham',get('EMG_Ham_mV'),'#f59e0b'),ds('EMG Calf',get('EMG_Calf_mV'),'#22c55e')],'mV');
+  mkChart('angleChart',[ds('Quad-Ham',get('Angle_Quad_Ham_deg'),'#2563eb'),ds('Quad-Calf',get('Angle_Quad_Calf_deg'),'#0d7e8a'),ds('Ham-Calf',get('Angle_Ham_Calf_deg'),'#f59e0b')],'°');
+  mkChart('quadAngleChart',[ds('Pitch',get('Pitch_Quad_deg'),'#2563eb'),ds('Roll',get('Roll_Quad_deg'),'#f59e0b')],'°');
+  mkChart('hamAngleChart', [ds('Pitch',get('Pitch_Ham_deg'),'#22c55e'),ds('Roll',get('Roll_Ham_deg'),'#ef4444')],'°');
+  mkChart('calfAngleChart',[ds('Pitch',get('Pitch_Calf_deg'),'#7c3aed'),ds('Roll',get('Roll_Calf_deg'),'#0d7e8a')],'°');
+  mkChart('accQuadChart',[ds('X',get('ACC_Quad_X_g'),'#2563eb'),ds('Y',get('ACC_Quad_Y_g'),'#f59e0b'),ds('Z',get('ACC_Quad_Z_g'),'#22c55e')],'g');
+  mkChart('accHamChart', [ds('X',get('ACC_Ham_X_g'),'#ef4444'),ds('Y',get('ACC_Ham_Y_g'),'#f59e0b'),ds('Z',get('ACC_Ham_Z_g'),'#7c3aed')],'g');
+  mkChart('accCalfChart',[ds('X',get('ACC_Calf_X_g'),'#7c3aed'),ds('Y',get('ACC_Calf_Y_g'),'#2563eb'),ds('Z',get('ACC_Calf_Z_g'),'#22c55e')],'g');
+
+  // Table
+  document.getElementById('rowCount').textContent = csvData.length;
+  document.getElementById('tableHead').innerHTML = '<tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr>';
+  const tbody = document.getElementById('tableBody');
+  csvData.forEach(row=>{
+    tbody.innerHTML+='<tr>'+cols.map(c=>`<td>${row[c]}</td>`).join('')+'</tr>';
+  });
+
+  // Upload
+  function handleUpload(e){
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      const lines = ev.target.result.trim().split('\n');
+      const headers = lines[0].split(',').map(h=>h.trim().replace(/\r/,''));
+      const rows = lines.slice(1).map(line=>{
+        const vals = line.split(',');
+        const obj = {}; headers.forEach((h,i)=>{ obj[h]=vals[i]?.trim().replace(/\r/,'')||'0'; }); return obj;
+      });
+      localStorage.setItem('acquiredData', JSON.stringify(rows));
+      document.getElementById('dataBadge').textContent = '📁 ' + file.name;
+      alert(`✅ Loaded ${rows.length} rows — reloading`); location.reload();
+    };
+    reader.readAsText(file);
+  }
+
+  // Tabs
+  function showTab(name, btn){
+    ['charts','angles','imu','table'].forEach(t=>document.getElementById('tab-'+t).classList.add('hidden'));
+    document.querySelectorAll('.tab-row button').forEach(b=>b.classList.remove('active'));
+    document.getElementById('tab-'+name).classList.remove('hidden');
+    btn.classList.add('active');
+  }
+
+  // Download
+  function downloadCSV(){
+    const header = cols.join(',');
+    const rows = csvData.map(r=>cols.map(c=>r[c]).join(','));
+    const blob = new Blob([header+'\n'+rows.join('\n')],{type:'text/csv'});
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download=`KneeSense_data_${Date.now()}.csv`; a.click();
+  }
+</script>
+</body>
+</html>
