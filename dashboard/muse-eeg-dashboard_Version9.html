@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Muse S — Neural Dashboard + Vitals</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script type="importmap">
+{ "imports": { "rxjs": "https://esm.sh/rxjs@7.8.1", "rxjs/operators": "https://esm.sh/rxjs@7.8.1/operators" } }
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;800&display=swap');
+  :root{--bg:#080c10;--surface:#0d1520;--border:#1a2a3a;--accent:#00e5ff;--accent2:#7b2fff;--accent3:#ff2e6c;--text:#c8dcea;--muted:#3a5570;--ch0:#00e5ff;--ch1:#7b2fff;--ch2:#ff2e6c;--ch3:#00ff9d;--ppg:#ff9d00;--warn:#fbbf24;--danger:#ef4444;--ok:#34d399;--heart:#ff4081}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:.35;pointer-events:none;z-index:0}
+  body::after{content:'';position:fixed;top:-200px;left:-200px;width:600px;height:600px;background:radial-gradient(circle,rgba(0,229,255,.07) 0%,transparent 70%);animation:pulse 8s ease-in-out infinite alternate;pointer-events:none;z-index:0}
+  @keyframes pulse{from{transform:translate(0,0) scale(1)}to{transform:translate(200px,300px) scale(1.4)}}
+  .wrapper{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
+  header{display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--border);backdrop-filter:blur(8px);background:rgba(8,12,16,.6);position:sticky;top:0;z-index:100}
+  .logo{display:flex;align-items:center;gap:12px}
+  .logo-icon{width:34px;height:34px;border:2px solid var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;animation:spin-border 6s linear infinite}
+  @keyframes spin-border{from{box-shadow:0 0 0 0 rgba(0,229,255,.5)}50%{box-shadow:0 0 20px 4px rgba(0,229,255,.2)}to{box-shadow:0 0 0 0 rgba(0,229,255,.5)}}
+  .logo-inner{width:12px;height:12px;background:var(--accent);border-radius:50%}
+  .logo h1{font-size:1.1rem;font-weight:800;letter-spacing:.08em;color:#fff}
+  .logo span{font-size:.65rem;font-family:'Space Mono',monospace;color:var(--muted);letter-spacing:.12em;display:block;margin-top:-2px}
+  .header-status{display:flex;align-items:center;gap:20px}
+  .status-pill{font-family:'Space Mono',monospace;font-size:.7rem;padding:4px 12px;border-radius:20px;border:1px solid var(--muted);color:var(--muted);display:flex;align-items:center;gap:6px;transition:all .3s}
+  .status-pill.connected{border-color:var(--accent);color:var(--accent)}
+  .status-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:background .3s}
+  .status-pill.connected .status-dot{background:var(--accent);box-shadow:0 0 6px var(--accent);animation:blink 2s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+  .connect-zone{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:60px 32px;transition:opacity .4s,transform .4s}
+  .connect-zone.hidden{display:none}
+  .connect-title{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;text-align:center;line-height:1.1;color:#fff}
+  .connect-title em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .connect-sub{font-family:'Space Mono',monospace;font-size:.8rem;color:var(--muted);text-align:center;max-width:420px;line-height:1.7}
+  .btn-connect{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;letter-spacing:.06em;padding:14px 40px;background:transparent;border:2px solid var(--accent);color:var(--accent);border-radius:4px;cursor:pointer;position:relative;overflow:hidden;transition:color .2s}
+  .btn-connect::before{content:'';position:absolute;inset:0;background:var(--accent);transform:scaleX(0);transform-origin:left;transition:transform .2s ease;z-index:-1}
+  .btn-connect:hover{color:var(--bg)}.btn-connect:hover::before{transform:scaleX(1)}
+  .btn-connect:disabled{opacity:.4;cursor:not-allowed}
+  .browser-note{font-family:'Space Mono',monospace;font-size:.68rem;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:10px 16px;max-width:400px;text-align:center;line-height:1.7}
+  .browser-note strong{color:var(--accent)}
+  .dashboard{display:none;flex-direction:column;gap:0;flex:1}
+  .dashboard.visible{display:flex}
+
+  /* VITALS ROW */
+  .vitals-row{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+  .vital-card{background:var(--surface);padding:20px 28px;display:flex;align-items:center;gap:20px}
+  .vital-icon{font-size:2.2rem;line-height:1}
+  .vital-data{display:flex;flex-direction:column;gap:2px}
+  .vital-label{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
+  .vital-value{font-family:'Space Mono',monospace;font-size:2rem;font-weight:700;color:#fff;transition:color .3s}
+  .vital-value.heart{color:var(--heart)}
+  .vital-value.spo2{color:var(--accent)}
+  .vital-unit{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted)}
+  .vital-sub{font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);margin-top:2px}
+  @keyframes heartbeat{0%,100%{transform:scale(1)}15%{transform:scale(1.2)}30%{transform:scale(1)}}
+  .heart-icon{display:inline-block}
+  .heart-icon.beating{animation:heartbeat 1s ease-in-out infinite}
+
+  /* STATE PANEL */
+  .state-panel{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+  .state-card{background:var(--surface);padding:16px 20px;display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden;transition:background .3s}
+  .state-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--muted);transition:background .3s,box-shadow .3s}
+  .state-card.level-ok::before{background:var(--ok)}
+  .state-card.level-warn::before{background:var(--warn);box-shadow:0 0 12px rgba(251,191,36,.3)}
+  .state-card.level-danger::before{background:var(--danger);box-shadow:0 0 12px rgba(239,68,68,.4)}
+  .state-header{display:flex;align-items:center;justify-content:space-between}
+  .state-name{font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .state-icon{font-size:1rem}
+  .state-level{font-family:'Space Mono',monospace;font-size:1.3rem;font-weight:700;color:#fff;transition:color .3s}
+  .state-level.ok{color:var(--ok)}.state-level.warn{color:var(--warn)}.state-level.danger{color:var(--danger)}
+  .state-bar-bg{height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+  .state-bar{height:100%;border-radius:3px;transition:width .5s ease,background .3s;width:0%}
+  .state-bar.ok{background:var(--ok)}.state-bar.warn{background:var(--warn)}.state-bar.danger{background:var(--danger)}
+  .state-detail{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);line-height:1.5}
+
+  /* BAND POWER */
+  .band-panel{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+  .band-card{background:var(--surface);padding:12px 16px;display:flex;flex-direction:column;gap:4px;align-items:center}
+  .band-name{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+  .band-hz{font-family:'Space Mono',monospace;font-size:.5rem;color:var(--muted)}
+  .band-value{font-family:'Space Mono',monospace;font-size:1rem;font-weight:700;color:#fff}
+  .band-bar-bg{width:100%;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+  .band-bar{height:100%;border-radius:2px;transition:width .4s ease}
+  .band-bar.delta{background:#60a5fa}.band-bar.theta{background:#a78bfa}.band-bar.alpha{background:#34d399}.band-bar.beta{background:#fbbf24}.band-bar.gamma{background:#f87171}
+
+  /* EEG VALUES */
+  .dash-top{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+  .stat-card{background:var(--surface);padding:20px 24px;display:flex;flex-direction:column;gap:4px}
+  .stat-label{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
+  .stat-value{font-family:'Space Mono',monospace;font-size:1.5rem;font-weight:700;color:#fff}
+  .stat-value.ch0{color:var(--ch0)}.stat-value.ch1{color:var(--ch1)}.stat-value.ch2{color:var(--ch2)}.stat-value.ch3{color:var(--ch3)}
+  .stat-unit{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted)}
+
+  /* CHARTS */
+  .charts-section{display:flex;flex-direction:column;gap:1px;background:var(--border);flex:1}
+  .chart-row{display:grid;grid-template-columns:120px 1fr;background:var(--surface);height:100px;align-items:stretch}
+  .chart-label{display:flex;flex-direction:column;justify-content:center;padding:0 16px;border-right:1px solid var(--border);gap:3px}
+  .ch-name{font-family:'Space Mono',monospace;font-size:.75rem;font-weight:700}
+  .ch-loc,.ch-hz{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted)}
+  .chart-wrap{position:relative;height:100px;padding:8px 0}
+  .ppg-row{background:var(--surface);height:80px;display:grid;grid-template-columns:120px 1fr;align-items:stretch}
+  .ppg-row .chart-wrap{height:80px}
+
+  /* BOTTOM BAR */
+  .bottom-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-top:1px solid var(--border);background:rgba(8,12,16,.8);backdrop-filter:blur(8px);gap:16px;flex-wrap:wrap}
+  .bottom-info{display:flex;gap:28px;align-items:center}
+  .info-item{font-family:'Space Mono',monospace;font-size:.68rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+  .info-item strong{color:var(--text)}
+  .bottom-actions{display:flex;gap:10px}
+  .btn-action{font-family:'Space Mono',monospace;font-size:.7rem;padding:8px 18px;border-radius:4px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text);letter-spacing:.06em;transition:all .2s}
+  .btn-action:hover{border-color:var(--text);color:#fff}
+  .btn-action.primary{border-color:var(--accent);color:var(--accent)}.btn-action.primary:hover{background:var(--accent);color:var(--bg)}
+  .btn-action.danger{border-color:var(--accent3);color:var(--accent3)}.btn-action.danger:hover{background:var(--accent3);color:#fff}
+  .btn-action:disabled{opacity:.35;cursor:not-allowed}
+  .rec-badge{display:none;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:.68rem;color:var(--accent3);letter-spacing:.08em}
+  .rec-badge.active{display:flex}
+  .rec-dot{width:8px;height:8px;border-radius:50%;background:var(--accent3);animation:blink 1s ease-in-out infinite}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a0810;border:1px solid var(--accent3);color:var(--accent3);font-family:'Space Mono',monospace;font-size:.72rem;padding:12px 24px;border-radius:4px;z-index:999;transition:transform .3s ease;max-width:90vw;text-align:center}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  @media(max-width:700px){.dash-top,.state-panel,.vitals-row{grid-template-columns:1fr 1fr}.band-panel{grid-template-columns:repeat(3,1fr)}.bottom-bar{flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <header>
+    <div class="logo">
+      <div class="logo-icon"><div class="logo-inner"></div></div>
+      <div><h1>NEURAL DASHBOARD</h1><span>MUSE S · ATHENA · EEG + VITALS</span></div>
+    </div>
+    <div class="header-status">
+      <div class="status-pill" id="statusPill"><div class="status-dot"></div><span id="statusText">DISCONNECTED</span></div>
+    </div>
+  </header>
+
+  <div class="connect-zone" id="connectZone">
+    <div class="connect-title">Read your<br/><em>brain waves</em><br/>in real time.</div>
+    <p class="connect-sub">Connect your Muse S Athena to stream raw EEG, heart rate, SpO₂, detect fatigue, pain, strain — all in real time.</p>
+    <button class="btn-connect" id="btnConnect">⬡ CONNECT MUSE S</button>
+    <div class="browser-note">Requires <strong>Chrome</strong> or <strong>Edge</strong> on desktop or Android.</div>
+  </div>
+
+  <div class="dashboard" id="dashboard">
+
+    <!-- VITALS: Heart Rate + SpO2 -->
+    <div class="vitals-row">
+      <div class="vital-card">
+        <div class="vital-icon"><span class="heart-icon" id="heartIcon">❤️</span></div>
+        <div class="vital-data">
+          <span class="vital-label">Heart Rate</span>
+          <span class="vital-value heart" id="hrValue">—</span>
+          <span class="vital-unit">BPM</span>
+          <span class="vital-sub" id="hrDetail">waiting for PPG…</span>
+        </div>
+      </div>
+      <div class="vital-card">
+        <div class="vital-icon">🫁</div>
+        <div class="vital-data">
+          <span class="vital-label">SpO₂ (estimated)</span>
+          <span class="vital-value spo2" id="spo2Value">—</span>
+          <span class="vital-unit">%</span>
+          <span class="vital-sub" id="spo2Detail">needs Red + IR channels</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE DETECTION -->
+    <div class="state-panel">
+      <div class="state-card level-ok" id="stateFatigue"><div class="state-header"><span class="state-name">Fatigue</span><span class="state-icon">😴</span></div><div class="state-level ok" id="fatigueLvl">LOW</div><div class="state-bar-bg"><div class="state-bar ok" id="fatigueBar" style="width:10%"></div></div><div class="state-detail" id="fatigueDetail">θ/β ratio: — | calibrating…</div></div>
+      <div class="state-card level-ok" id="statePain"><div class="state-header"><span class="state-name">Pain / Discomfort</span><span class="state-icon">🔥</span></div><div class="state-level ok" id="painLvl">NONE</div><div class="state-bar-bg"><div class="state-bar ok" id="painBar" style="width:5%"></div></div><div class="state-detail" id="painDetail">γ power: — | α suppression: —</div></div>
+      <div class="state-card level-ok" id="stateStrain"><div class="state-header"><span class="state-name">Mental Strain</span><span class="state-icon">⚡</span></div><div class="state-level ok" id="strainLvl">LOW</div><div class="state-bar-bg"><div class="state-bar ok" id="strainBar" style="width:10%"></div></div><div class="state-detail" id="strainDetail">hi-β: — | α: — | ratio: —</div></div>
+      <div class="state-card level-ok" id="stateCalm"><div class="state-header"><span class="state-name">Relaxation</span><span class="state-icon">🧘</span></div><div class="state-level ok" id="calmLvl">—</div><div class="state-bar-bg"><div class="state-bar ok" id="calmBar" style="width:0%"></div></div><div class="state-detail" id="calmDetail">α dominance: — | calibrating…</div></div>
+    </div>
+
+    <!-- BAND POWER -->
+    <div class="band-panel">
+      <div class="band-card"><span class="band-name">Delta</span><span class="band-hz">1–4 Hz</span><span class="band-value" id="bandDelta">—</span><div class="band-bar-bg"><div class="band-bar delta" id="bandDeltaBar" style="width:0%"></div></div></div>
+      <div class="band-card"><span class="band-name">Theta</span><span class="band-hz">4–8 Hz</span><span class="band-value" id="bandTheta">—</span><div class="band-bar-bg"><div class="band-bar theta" id="bandThetaBar" style="width:0%"></div></div></div>
+      <div class="band-card"><span class="band-name">Alpha</span><span class="band-hz">8–12 Hz</span><span class="band-value" id="bandAlpha">—</span><div class="band-bar-bg"><div class="band-bar alpha" id="bandAlphaBar" style="width:0%"></div></div></div>
+      <div class="band-card"><span class="band-name">Beta</span><span class="band-hz">12–30 Hz</span><span class="band-value" id="bandBeta">—</span><div class="band-bar-bg"><div class="band-bar beta" id="bandBetaBar" style="width:0%"></div></div></div>
+      <div class="band-card"><span class="band-name">Gamma</span><span class="band-hz">30–44 Hz</span><span class="band-value" id="bandGamma">—</span><div class="band-bar-bg"><div class="band-bar gamma" id="bandGammaBar" style="width:0%"></div></div></div>
+    </div>
+
+    <!-- EEG VALUES -->
+    <div class="dash-top">
+      <div class="stat-card"><span class="stat-label">TP9 · Left Ear</span><span class="stat-value ch0" id="val0">—</span><span class="stat-unit">μV raw</span></div>
+      <div class="stat-card"><span class="stat-label">AF7 · Left Front</span><span class="stat-value ch1" id="val1">—</span><span class="stat-unit">μV raw</span></div>
+      <div class="stat-card"><span class="stat-label">AF8 · Right Front</span><span class="stat-value ch2" id="val2">—</span><span class="stat-unit">μV raw</span></div>
+      <div class="stat-card"><span class="stat-label">TP10 · Right Ear</span><span class="stat-value ch3" id="val3">—</span><span class="stat-unit">μV raw</span></div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts-section">
+      <div class="chart-row"><div class="chart-label"><span class="ch-name" style="color:var(--ch0)">TP9</span><span class="ch-loc">Left Ear</span><span class="ch-hz">256 Hz</span></div><div class="chart-wrap"><canvas id="chart0"></canvas></div></div>
+      <div class="chart-row"><div class="chart-label"><span class="ch-name" style="color:var(--ch1)">AF7</span><span class="ch-loc">Left Front</span><span class="ch-hz">256 Hz</span></div><div class="chart-wrap"><canvas id="chart1"></canvas></div></div>
+      <div class="chart-row"><div class="chart-label"><span class="ch-name" style="color:var(--ch2)">AF8</span><span class="ch-loc">Right Front</span><span class="ch-hz">256 Hz</span></div><div class="chart-wrap"><canvas id="chart2"></canvas></div></div>
+      <div class="chart-row"><div class="chart-label"><span class="ch-name" style="color:var(--ch3)">TP10</span><span class="ch-loc">Right Ear</span><span class="ch-hz">256 Hz</span></div><div class="chart-wrap"><canvas id="chart3"></canvas></div></div>
+      <div class="ppg-row"><div class="chart-label"><span class="ch-name" style="color:var(--ppg)">IR PPG</span><span class="ch-loc">Heart</span><span class="ch-hz">64 Hz</span></div><div class="chart-wrap"><canvas id="chartPPG"></canvas></div></div>
+      <div class="ppg-row"><div class="chart-label"><span class="ch-name" style="color:var(--danger)">Red PPG</span><span class="ch-loc">SpO₂</span><span class="ch-hz">64 Hz</span></div><div class="chart-wrap"><canvas id="chartRed"></canvas></div></div>
+    </div>
+
+    <!-- BOTTOM BAR -->
+    <div class="bottom-bar">
+      <div class="bottom-info">
+        <div class="info-item">SAMPLES <strong id="sampleCount">0</strong></div>
+        <div class="info-item">DURATION <strong id="duration">00:00</strong></div>
+        <div class="info-item">ANALYSIS <strong>2 Hz</strong></div>
+        <div class="rec-badge" id="recBadge"><div class="rec-dot"></div>RECORDING</div>
+      </div>
+      <div class="bottom-actions">
+        <button class="btn-action" id="btnRecord">⏺ START REC</button>
+        <button class="btn-action primary" id="btnExport" disabled>↓ EXPORT CSV</button>
+        <button class="btn-action danger" id="btnDisconnect">✕ DISCONNECT</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { MuseAthenaClient } from 'https://esm.sh/gh/fuji3to4/muse-jsx@main/src/muse-athena.ts?bundle';
+console.log('[Dashboard] MuseAthenaClient:', MuseAthenaClient);
+
+// ═════════════════════════════════════════════════════════════════════════════
+// FFT
+// ═════════════════════════════════════════════════════════════════════════════
+function fft(re, im) {
+  const N = re.length; if (N <= 1) return;
+  for (let i=1,j=0;i<N;i++){let bit=N>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]];}}
+  for(let len=2;len<=N;len<<=1){const ang=-2*Math.PI/len;const wR=Math.cos(ang),wI=Math.sin(ang);for(let i=0;i<N;i+=len){let cR=1,cI=0;for(let j=0;j<len/2;j++){const tR=cR*re[i+j+len/2]-cI*im[i+j+len/2];const tI=cR*im[i+j+len/2]+cI*re[i+j+len/2];re[i+j+len/2]=re[i+j]-tR;im[i+j+len/2]=im[i+j]-tI;re[i+j]+=tR;im[i+j]+=tI;const nR=cR*wR-cI*wI;cI=cR*wI+cI*wR;cR=nR;}}}
+}
+function bandPower(samples,sr,fL,fH){
+  const N0=samples.length;let N=1;while(N<N0)N<<=1;
+  const re=new Float64Array(N),im=new Float64Array(N);
+  for(let i=0;i<N0;i++){re[i]=samples[i]*0.5*(1-Math.cos(2*Math.PI*i/(N0-1)));}
+  fft(re,im);const fr=sr/N;const bL=Math.max(1,Math.round(fL/fr)),bH=Math.min(N/2-1,Math.round(fH/fr));
+  let p=0;for(let i=bL;i<=bH;i++)p+=re[i]*re[i]+im[i]*im[i];return p/N;
+}
+function computeBands(s,sr){return{delta:bandPower(s,sr,1,4),theta:bandPower(s,sr,4,8),alpha:bandPower(s,sr,8,12),beta:bandPower(s,sr,12,30),hiBeta:bandPower(s,sr,20,30),gamma:bandPower(s,sr,30,44)};}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// HEART RATE + SpO2 ENGINE
+// ═════════════════════════════════════════════════════════════════════════════
+const PPG_SR = 64;
+const PPG_BUF_SIZE = 64 * 8; // 8 seconds of PPG data
+let irBuffer = [];
+let redBuffer = [];
+let ambientBuffer = [];
+let currentHR = null;
+let currentSpO2 = null;
+let hrHistory = [];
+
+// Simple bandpass filter for PPG (0.7 Hz – 3.5 Hz = 42-210 BPM range)
+function bandpassPPG(signal) {
+  // Moving average subtraction (remove DC) + smoothing
+  const winDC = Math.round(PPG_SR * 1.5); // ~1.5 second DC window
+  const winSmooth = 3;
+  const filtered = new Float64Array(signal.length);
+
+  // Remove DC (baseline wander)
+  for (let i = 0; i < signal.length; i++) {
+    const start = Math.max(0, i - winDC);
+    const end = Math.min(signal.length, i + winDC);
+    let sum = 0;
+    for (let j = start; j < end; j++) sum += signal[j];
+    filtered[i] = signal[i] - sum / (end - start);
+  }
+
+  // Smooth (moving average)
+  const smoothed = new Float64Array(signal.length);
+  for (let i = 0; i < signal.length; i++) {
+    const s = Math.max(0, i - winSmooth);
+    const e = Math.min(signal.length, i + winSmooth + 1);
+    let sum = 0;
+    for (let j = s; j < e; j++) sum += filtered[j];
+    smoothed[i] = sum / (e - s);
+  }
+  return smoothed;
+}
+
+// Peak detection for heart rate
+function findPeaks(signal, minDistance) {
+  const peaks = [];
+  for (let i = 2; i < signal.length - 2; i++) {
+    if (signal[i] > signal[i-1] && signal[i] > signal[i+1] &&
+        signal[i] > signal[i-2] && signal[i] > signal[i+2]) {
+      if (peaks.length === 0 || (i - peaks[peaks.length-1]) >= minDistance) {
+        peaks.push(i);
+      }
+    }
+  }
+  return peaks;
+}
+
+function computeHeartRate(irData) {
+  if (irData.length < PPG_SR * 4) return null; // need at least 4 seconds
+
+  const signal = bandpassPPG(irData);
+  const minDist = Math.round(PPG_SR * 0.35); // min 0.35s between beats (~170 BPM max)
+  const peaks = findPeaks(signal, minDist);
+
+  if (peaks.length < 3) return null;
+
+  // Compute RR intervals
+  const rrIntervals = [];
+  for (let i = 1; i < peaks.length; i++) {
+    const rr = (peaks[i] - peaks[i-1]) / PPG_SR; // seconds
+    if (rr > 0.3 && rr < 2.0) { // 30-200 BPM sanity check
+      rrIntervals.push(rr);
+    }
+  }
+
+  if (rrIntervals.length < 2) return null;
+
+  // Median RR interval (more robust than mean)
+  const sorted = [...rrIntervals].sort((a,b) => a-b);
+  const medianRR = sorted[Math.floor(sorted.length / 2)];
+
+  const hr = 60 / medianRR;
+  return (hr >= 40 && hr <= 180) ? hr : null;
+}
+
+function computeSpO2(irData, redData) {
+  if (irData.length < PPG_SR * 4 || redData.length < PPG_SR * 4) return null;
+
+  // Use the last 4 seconds
+  const len = Math.min(irData.length, redData.length, PPG_SR * 4);
+  const ir = irData.slice(-len);
+  const red = redData.slice(-len);
+
+  // AC component: standard deviation (proxy for pulsatile amplitude)
+  // DC component: mean
+  const irMean = ir.reduce((a,b) => a+b, 0) / ir.length;
+  const redMean = red.reduce((a,b) => a+b, 0) / red.length;
+
+  if (irMean === 0 || redMean === 0) return null;
+
+  let irAcSum = 0, redAcSum = 0;
+  for (let i = 0; i < len; i++) {
+    irAcSum += (ir[i] - irMean) ** 2;
+    redAcSum += (red[i] - redMean) ** 2;
+  }
+  const irAC = Math.sqrt(irAcSum / len);
+  const redAC = Math.sqrt(redAcSum / len);
+
+  if (irAC === 0) return null;
+
+  // Ratio of ratios
+  const R = (redAC / redMean) / (irAC / irMean);
+
+  // Beer-Lambert calibration curve (empirical, standard pulse ox)
+  // SpO2 = 110 - 25 * R (typical linear approximation)
+  // More accurate: SpO2 = A - B*R where A≈110, B≈25
+  let spo2 = 110 - 25 * R;
+
+  // Clamp to realistic range
+  spo2 = Math.max(70, Math.min(100, spo2));
+
+  return spo2;
+}
+
+function updateVitalsUI() {
+  // Heart Rate
+  const hrEl = document.getElementById('hrValue');
+  const hrDetail = document.getElementById('hrDetail');
+  const heartIcon = document.getElementById('heartIcon');
+
+  if (currentHR !== null) {
+    hrEl.textContent = Math.round(currentHR);
+    hrDetail.textContent = `${hrHistory.length} beats detected | IR peak analysis`;
+    heartIcon.classList.add('beating');
+
+    // Color based on HR zone
+    if (currentHR > 100) hrEl.style.color = 'var(--danger)';
+    else if (currentHR > 80) hrEl.style.color = 'var(--warn)';
+    else hrEl.style.color = 'var(--heart)';
+  } else {
+    hrEl.textContent = '—';
+    hrDetail.textContent = irBuffer.length > 0 ? `buffering IR… ${irBuffer.length}/${PPG_SR*4}` : 'waiting for PPG…';
+    heartIcon.classList.remove('beating');
+  }
+
+  // SpO2
+  const spo2El = document.getElementById('spo2Value');
+  const spo2Detail = document.getElementById('spo2Detail');
+
+  if (currentSpO2 !== null) {
+    spo2El.textContent = currentSpO2.toFixed(1);
+
+    if (currentSpO2 < 90) { spo2El.style.color = 'var(--danger)'; spo2Detail.textContent = '⚠️ LOW — check sensor fit'; }
+    else if (currentSpO2 < 95) { spo2El.style.color = 'var(--warn)'; spo2Detail.textContent = 'slightly low — R/IR ratio analysis'; }
+    else { spo2El.style.color = 'var(--accent)'; spo2Detail.textContent = 'normal range — Red/IR ratio method'; }
+  } else {
+    spo2El.textContent = '—';
+    spo2Detail.textContent = redBuffer.length > 0 ? `buffering Red… ${redBuffer.length}/${PPG_SR*4}` : 'needs Red + IR channels';
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// STATE DETECTION (same as before)
+// ═════════════════════════════════════════════════════════════════════════════
+const FATIGUE_TB_HIGH=3.0;const PAIN_GAMMA_TH=1.8;const PAIN_ALPHA_SUP=0.4;const STRAIN_HBA_HIGH=2.5;
+let baselineWindow=[];let baseline=null;const BASELINE_DUR=3;const SR=256;const ANALYSIS_WIN=512;
+const EMA_A=0.3;let smoothed={fatigue:0,pain:0,strain:0,calm:0};
+function ema(p,c){return EMA_A*c+(1-EMA_A)*p;}
+
+function analyzeState(cBufs){
+  const len=ANALYSIS_WIN;
+  const cd=cBufs.map(b=>b.length<len?null:b.slice(b.length-len));
+  if(cd.some(d=>d===null))return null;
+  const cb=cd.map(d=>computeBands(d,SR));
+  const avg={delta:0,theta:0,alpha:0,beta:0,hiBeta:0,gamma:0};
+  for(const b of cb)for(const k in avg)avg[k]+=b[k];for(const k in avg)avg[k]/=4;
+  const af7=cb[1],af8=cb[2];
+  if(!baseline){baselineWindow.push({...avg});if(baselineWindow.length>=BASELINE_DUR*2){baseline={delta:0,theta:0,alpha:0,beta:0,hiBeta:0,gamma:0};for(const s of baselineWindow)for(const k in baseline)baseline[k]+=s[k];for(const k in baseline)baseline[k]/=baselineWindow.length;console.log('[Analysis] Baseline:',baseline);}return{avg,af7,af8,calibrating:true};}
+  const tp=avg.delta+avg.theta+avg.alpha+avg.beta+avg.gamma;
+  const tbr=avg.beta>0?avg.theta/avg.beta:0;let fs=Math.min(1,tbr/(FATIGUE_TB_HIGH*1.5));smoothed.fatigue=ema(smoothed.fatigue,fs);
+  const gr=baseline.gamma>0?avg.gamma/baseline.gamma:1;const ar=baseline.alpha>0?avg.alpha/baseline.alpha:1;const fa=(af7.alpha+af8.alpha)>0?Math.abs(af7.alpha-af8.alpha)/((af7.alpha+af8.alpha)/2):0;let ps=0;if(gr>PAIN_GAMMA_TH)ps+=.4;if(ar<PAIN_ALPHA_SUP)ps+=.3;if(fa>.3)ps+=.3;smoothed.pain=ema(smoothed.pain,Math.min(1,ps));
+  const hbar=avg.alpha>0?avg.hiBeta/avg.alpha:0;let ss=Math.min(1,hbar/(STRAIN_HBA_HIGH*1.2));smoothed.strain=ema(smoothed.strain,ss);
+  const ad=tp>0?avg.alpha/tp:0;let cs=Math.min(1,ad/.5);smoothed.calm=ema(smoothed.calm,cs);
+  return{avg,af7,af8,calibrating:false,totalPower:tp,thetaBetaRatio:tbr,gammaRatio:gr,alphaRatio:ar,frontalAsym:fa,hiBetaAlphaRatio:hbar,alphaDominance:ad,scores:{...smoothed}};
+}
+
+function updateStateUI(r){
+  if(!r)return;const{avg,calibrating}=r;
+  const tp=avg.delta+avg.theta+avg.alpha+avg.beta+avg.gamma||1;
+  const mx=Math.max(avg.delta,avg.theta,avg.alpha,avg.beta,avg.gamma,1);
+  for(const b of['delta','theta','alpha','beta','gamma']){
+    const pct=(avg[b]/mx*100).toFixed(0);const db=avg[b]>0?(10*Math.log10(avg[b])).toFixed(1):'—';
+    document.getElementById('band'+b.charAt(0).toUpperCase()+b.slice(1)).textContent=db;
+    document.getElementById('band'+b.charAt(0).toUpperCase()+b.slice(1)+'Bar').style.width=pct+'%';
+  }
+  if(calibrating){for(const id of['fatigueDetail','painDetail','strainDetail','calmDetail'])document.getElementById(id).textContent=`calibrating… ${baselineWindow.length}/${BASELINE_DUR*2}`;return;}
+  const{scores:sc,thetaBetaRatio:tbr,gammaRatio:gr,alphaRatio:ar,frontalAsym:fa,hiBetaAlphaRatio:hbar,alphaDominance:ad}=r;
+  updCard('stateFatigue','fatigueLvl','fatigueBar',sc.fatigue,sc.fatigue>.65?'HIGH':sc.fatigue>.35?'MODERATE':'LOW');
+  document.getElementById('fatigueDetail').textContent=`θ/β:${tbr.toFixed(2)} | ${(sc.fatigue*100).toFixed(0)}%`;
+  updCard('statePain','painLvl','painBar',sc.pain,sc.pain>.6?'DETECTED':sc.pain>.3?'MILD':'NONE');
+  document.getElementById('painDetail').textContent=`γ×${gr.toFixed(1)} | α↓${(ar*100).toFixed(0)}% | asym:${(fa*100).toFixed(0)}%`;
+  updCard('stateStrain','strainLvl','strainBar',sc.strain,sc.strain>.65?'HIGH':sc.strain>.35?'MODERATE':'LOW');
+  document.getElementById('strainDetail').textContent=`hiβ/α:${hbar.toFixed(2)} | ${(sc.strain*100).toFixed(0)}%`;
+  updCard('stateCalm','calmLvl','calmBar',sc.calm,sc.calm>.6?'DEEP':sc.calm>.3?'MODERATE':'LOW');
+  document.getElementById('calmDetail').textContent=`α dom:${(ad*100).toFixed(0)}% | ${(sc.calm*100).toFixed(0)}%`;
+}
+function updCard(cid,lid,bid,score,label){
+  const lv=score>.65?'danger':score>.35?'warn':'ok';
+  document.getElementById(cid).className='state-card level-'+lv;
+  const l=document.getElementById(lid);l.className='state-level '+lv;l.textContent=label;
+  const b=document.getElementById(bid);b.className='state-bar '+lv;b.style.width=Math.max(5,score*100)+'%';
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═════════════════════════════════════════════════════════════════════════════
+let toastTimer=null;
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),5000);}
+function setStatus(c){const p=document.getElementById('statusPill'),t=document.getElementById('statusText');if(c){p.classList.add('connected');t.textContent='CONNECTED';}else{p.classList.remove('connected');t.textContent='DISCONNECTED';}}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// STATE & CHARTS
+// ═════════════════════════════════════════════════════════════════════════════
+const WINDOW=256*4;const PPG_WINDOW=64*4;
+let client=null,isConnected=false,isRecording=false,recordedData=[],sampleCount=0,sessionStart=null,durationTimer=null,analysisTimer=null,subscriptions=[];
+const CH_COLORS=['#00e5ff','#7b2fff','#ff2e6c','#00ff9d'];
+function makeBuffer(n){return Array(n).fill(0);}
+let eegBuffers=[makeBuffer(WINDOW),makeBuffer(WINDOW),makeBuffer(WINDOW),makeBuffer(WINDOW)];
+let ppgBuffer=makeBuffer(PPG_WINDOW);
+let redPPGBuffer=makeBuffer(PPG_WINDOW);
+
+function buildChart(id,color,bufSize){
+  return new Chart(document.getElementById(id).getContext('2d'),{type:'line',data:{labels:Array(bufSize).fill(''),datasets:[{data:Array(bufSize).fill(0),borderColor:color,borderWidth:1.2,pointRadius:0,tension:.1,fill:false}]},options:{animation:false,responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:true,ticks:{color:'#3a5570',font:{family:'Space Mono',size:9},maxTicksLimit:4,callback:v=>v.toFixed(0)},grid:{color:'rgba(26,42,58,.5)'},border:{display:false}}}}});
+}
+const charts=[buildChart('chart0',CH_COLORS[0],WINDOW),buildChart('chart1',CH_COLORS[1],WINDOW),buildChart('chart2',CH_COLORS[2],WINDOW),buildChart('chart3',CH_COLORS[3],WINDOW)];
+const chartPPG=buildChart('chartPPG','#ff9d00',PPG_WINDOW);
+const chartRed=buildChart('chartRed','#ef4444',PPG_WINDOW);
+
+function startDurationTimer(){if(durationTimer)clearInterval(durationTimer);durationTimer=setInterval(()=>{const e=Math.floor((Date.now()-sessionStart)/1000);document.getElementById('duration').textContent=String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0');},1000);}
+
+function startAnalysis(){
+  if(analysisTimer)clearInterval(analysisTimer);
+  analysisTimer=setInterval(()=>{
+    // EEG state analysis
+    const r=analyzeState(eegBuffers);updateStateUI(r);
+    // PPG vitals
+    currentHR=computeHeartRate(irBuffer);
+    currentSpO2=computeSpO2(irBuffer,redBuffer);
+    if(currentHR)hrHistory.push(currentHR);
+    updateVitalsUI();
+  },500);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CONNECT
+// ═════════════════════════════════════════════════════════════════════════════
+async function connectMuse(){
+  if(!navigator.bluetooth){showToast('Web Bluetooth not available.');return;}
+  const btn=document.getElementById('btnConnect');btn.disabled=true;btn.textContent='⟳ CONNECTING…';
+  try{
+    client=new MuseAthenaClient();await client.connect();await client.start('p21');
+    isConnected=true;sessionStart=Date.now();
+    baseline=null;baselineWindow=[];smoothed={fatigue:0,pain:0,strain:0,calm:0};
+    irBuffer=[];redBuffer=[];ambientBuffer=[];hrHistory=[];currentHR=null;currentSpO2=null;
+    document.getElementById('connectZone').classList.add('hidden');
+    document.getElementById('dashboard').classList.add('visible');
+    setStatus(true);startDurationTimer();startAnalysis();subscribeStreams();
+  }catch(e){console.error(e);btn.disabled=false;btn.textContent='⬡ CONNECT MUSE S';showToast('Connection failed: '+(e.message||e));}
+}
+
+function subscribeStreams(){
+  // EEG
+  const eegSub=client.eegReadings.subscribe(reading=>{
+    const ch=reading.electrode;if(ch<0||ch>3)return;
+    reading.samples.forEach(s=>{eegBuffers[ch].push(s);if(eegBuffers[ch].length>WINDOW)eegBuffers[ch].shift();});
+    const last=reading.samples[reading.samples.length-1];
+    document.getElementById('val'+ch).textContent=isFinite(last)?last.toFixed(1):'—';
+    charts[ch].data.datasets[0].data=[...eegBuffers[ch]];charts[ch].update('none');
+    sampleCount+=reading.samples.length;document.getElementById('sampleCount').textContent=sampleCount.toLocaleString();
+    if(isRecording){const ts=Date.now();reading.samples.forEach((s,i)=>{recordedData.push({timestamp:ts-(reading.samples.length-1-i)*(1000/256),type:'EEG',channel:'CH'+ch,electrode:['TP9','AF7','AF8','TP10'][ch],value:s});});}
+  });
+  subscriptions.push(eegSub);
+
+  // PPG — ALL 3 CHANNELS: ambient(0), infrared(1), red(2)
+  if(client.opticalReadings){
+    const ppgSub=client.opticalReadings.subscribe(reading=>{
+      const ch=reading.opticalChannel;
+      const samples=reading.samples;
+
+      if(ch===0){
+        // Ambient — store for potential noise rejection
+        samples.forEach(s=>{ambientBuffer.push(s);if(ambientBuffer.length>PPG_BUF_SIZE)ambientBuffer.shift();});
+      }
+      else if(ch===1){
+        // Infrared — primary HR signal
+        samples.forEach(s=>{
+          irBuffer.push(s);if(irBuffer.length>PPG_BUF_SIZE)irBuffer.shift();
+          ppgBuffer.push(s);if(ppgBuffer.length>PPG_WINDOW)ppgBuffer.shift();
+        });
+        chartPPG.data.datasets[0].data=[...ppgBuffer];chartPPG.update('none');
+      }
+      else if(ch===2){
+        // Red — for SpO2
+        samples.forEach(s=>{
+          redBuffer.push(s);if(redBuffer.length>PPG_BUF_SIZE)redBuffer.shift();
+          redPPGBuffer.push(s);if(redPPGBuffer.length>PPG_WINDOW)redPPGBuffer.shift();
+        });
+        chartRed.data.datasets[0].data=[...redPPGBuffer];chartRed.update('none');
+      }
+
+      if(isRecording){const ts=Date.now();const chName=['AMB','IR','RED'][ch];samples.forEach((s,i)=>{recordedData.push({timestamp:ts-(samples.length-1-i)*(1000/64),type:'PPG',channel:chName,electrode:'PPG_'+chName,value:s});});}
+    });
+    subscriptions.push(ppgSub);
+  }
+}
+
+function toggleRecord(){
+  const btn=document.getElementById('btnRecord'),badge=document.getElementById('recBadge'),exp=document.getElementById('btnExport');
+  isRecording=!isRecording;
+  if(isRecording){recordedData=[];btn.textContent='⏹ STOP REC';btn.classList.add('danger');badge.classList.add('active');exp.disabled=true;}
+  else{btn.textContent='⏺ START REC';btn.classList.remove('danger');badge.classList.remove('active');exp.disabled=recordedData.length===0;if(recordedData.length>0)showToast(`Recorded ${recordedData.length.toLocaleString()} samples.`);}
+}
+function exportCSV(){
+  if(!recordedData.length)return;
+  const rows=recordedData.map(r=>`${r.timestamp},${r.type},${r.channel},${r.electrode},${r.value.toFixed(4)}`).join('\n');
+  const blob=new Blob(['timestamp_ms,type,channel,electrode,value\n'+rows],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`muse-eeg-vitals-${new Date().toISOString().replace(/[:.]/g,'-').slice(0,19)}.csv`;a.click();
+  showToast(`Exported ${recordedData.length.toLocaleString()} rows.`);
+}
+async function disconnect(){
+  if(durationTimer)clearInterval(durationTimer);if(analysisTimer)clearInterval(analysisTimer);
+  subscriptions.forEach(s=>{try{s.unsubscribe();}catch(e){}});subscriptions=[];
+  if(client){try{if(typeof client.disconnect==='function')client.disconnect();}catch(e){}client=null;}
+  isConnected=false;isRecording=false;setStatus(false);
+  document.getElementById('dashboard').classList.remove('visible');document.getElementById('connectZone').classList.remove('hidden');
+  document.getElementById('btnConnect').disabled=false;document.getElementById('btnConnect').textContent='⬡ CONNECT MUSE S';
+  document.getElementById('recBadge').classList.remove('active');document.getElementById('btnRecord').textContent='⏺ START REC';document.getElementById('btnRecord').classList.remove('danger');
+  for(let i=0;i<4;i++){eegBuffers[i]=makeBuffer(WINDOW);charts[i].data.datasets[0].data=[...eegBuffers[i]];charts[i].update('none');document.getElementById('val'+i).textContent='—';}
+  ppgBuffer.splice(0,ppgBuffer.length,...makeBuffer(PPG_WINDOW));chartPPG.data.datasets[0].data=[...ppgBuffer];chartPPG.update('none');
+  redPPGBuffer.splice(0,redPPGBuffer.length,...makeBuffer(PPG_WINDOW));chartRed.data.datasets[0].data=[...redPPGBuffer];chartRed.update('none');
+  sampleCount=0;
+  document.getElementById('hrValue').textContent='—';document.getElementById('spo2Value').textContent='—';
+  document.getElementById('heartIcon').classList.remove('beating');
+}
+
+document.getElementById('btnConnect').addEventListener('click',connectMuse);
+document.getElementById('btnRecord').addEventListener('click',toggleRecord);
+document.getElementById('btnExport').addEventListener('click',exportCSV);
+document.getElementById('btnDisconnect').addEventListener('click',disconnect);
+console.log('[Dashboard] Ready!');
+</script>
+</body>
+</html>
